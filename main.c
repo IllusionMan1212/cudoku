@@ -1,6 +1,7 @@
 #include <stdbool.h>
 
 #include <glad/glx.h>
+#include <stdio.h>
 
 #include "x11.h"
 #include "cudoku.h"
@@ -12,6 +13,18 @@
 // Simply port the js algo for sudoku generation
 // Maybe after the game works fine we can use some winapi to add windows support
 
+void scale_bg_rect(int width, int height, float *x, float *y) {
+  if (width > height) {
+    float ratio = (float)height / (float)width;
+    *x = ratio;
+    *y = 1.f;
+  } else {
+    float ratio = (float)width / (float)height;
+    *x = 1.f;
+    *y = ratio;
+  }
+}
+
 Display *display;
 Window window;
 
@@ -19,7 +32,11 @@ int main() {
   int res = init_x11(&display, &window);
   if (res < 0) return 1;
 
+  // 900 is the initial width and height
   int width = 900, height = 900;
+  // scale factors for the entire board to nicely fit as a square inside
+  // the window
+  float x_scale = 1.f, y_scale = 1.f;
 
   Shader board_shader = create_shader("shaders/board_v.glsl", "shaders/board_f.glsl");
   unsigned int board_vao = prepare_bg_rect(board_shader);
@@ -37,18 +54,21 @@ int main() {
           width = xce.width;
           height = xce.height;
           resize_x11_window(display, window);
+          scale_bg_rect(xce.width, xce.height, &x_scale, &y_scale);
         }
 
-      } else if (xev.type == KeyPress && XLookupKeysym(&xev.xkey, 0) == XK_Escape) {
-        quit = true;
-        break;
+      } else if (xev.type == KeyPress) {
+        if (XLookupKeysym(&xev.xkey, 0) == XK_Escape || XLookupKeysym(&xev.xkey, 0) == XK_q) {
+          quit = true;
+          break;
+        }
       }
     }
 
     glClearColor(0.0, 0.0, 0.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    draw_bg_rect(board_shader, board_vao);
+    draw_bg_rect(board_shader, board_vao, x_scale, y_scale);
 
     glXSwapBuffers(display, window);
   }

@@ -81,3 +81,8 @@ void use_shader(Shader shader) {
   glUseProgram(shader.program);
 }
 
+void set_mat4(Shader shader, const char *name, float *mat4) {
+  int loc = glGetUniformLocation(shader.program, name);
+  glUniformMatrix4fv(loc, 1, GL_FALSE, mat4);
+}
+
