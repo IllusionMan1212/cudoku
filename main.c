@@ -1,7 +1,6 @@
 #include <stdbool.h>
 
 #include <glad/glx.h>
-#include <stdio.h>
 
 #include "x11.h"
 #include "cudoku.h"
@@ -39,6 +38,7 @@ int main() {
   float x_scale = 1.f, y_scale = 1.f;
 
   Shader board_shader = create_shader("shaders/board_v.glsl", "shaders/board_f.glsl");
+  Shader grid_shader = create_shader("shaders/grid_v.glsl", "shaders/grid_f.glsl");
   unsigned int board_vao = prepare_bg_rect(board_shader);
 
   bool quit = false;
@@ -69,6 +69,7 @@ int main() {
     glClear(GL_COLOR_BUFFER_BIT);
 
     draw_bg_rect(board_shader, board_vao, x_scale, y_scale);
+    draw_bg_lines(grid_shader, x_scale, y_scale, width < height ? width : height);
 
     glXSwapBuffers(display, window);
   }

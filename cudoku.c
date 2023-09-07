@@ -1,4 +1,5 @@
 #include <glad/gl.h>
+#include <stdio.h>
 
 #include "shader.h"
 
@@ -49,5 +50,22 @@ void draw_bg_rect(Shader shader, unsigned int vao, float x_scale, float y_scale)
   glBindVertexArray(vao);
   glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-  glBindVertexArray(0);
+  // TODO: no idea why binding to default (0) breaks the grid shader
+  /* glBindVertexArray(0); */
+}
+
+void draw_bg_lines(Shader shader, float x_scale, float y_scale, float resolution) {
+  use_shader(shader);
+
+  float mat[4][4] = {
+    {x_scale, 0, 0, 0},
+    {0, y_scale, 0, 0},
+    {0, 0, 1, 0},
+    {0, 0, 0, 1},
+  };
+
+  set_mat4(shader, "transform", (float *)mat);
+  set_float(shader, "resolution", resolution);
+
+  glDrawArrays(GL_TRIANGLES, 0, 6);
 }
