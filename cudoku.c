@@ -35,17 +35,10 @@ unsigned int prepare_bg_rect() {
   return vao;
 }
 
-void draw_bg_rect(Shader shader, unsigned int vao, float x_scale, float y_scale) {
+void draw_bg_rect(Shader shader, unsigned int vao, float* transform) {
   use_shader(shader);
 
-  float mat[4][4] = {
-    {x_scale, 0, 0, 0},
-    {0, y_scale, 0, 0},
-    {0, 0, 1, 0},
-    {0, 0, 0, 1},
-  };
-
-  set_mat4(shader, "transform", (float *)mat);
+  set_mat4(shader, "transform", transform);
 
   glBindVertexArray(vao);
   glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -54,17 +47,10 @@ void draw_bg_rect(Shader shader, unsigned int vao, float x_scale, float y_scale)
   /* glBindVertexArray(0); */
 }
 
-void draw_bg_lines(Shader shader, float x_scale, float y_scale, float resolution) {
+void draw_bg_lines(Shader shader, float* transform, float resolution) {
   use_shader(shader);
 
-  float mat[4][4] = {
-    {x_scale, 0, 0, 0},
-    {0, y_scale, 0, 0},
-    {0, 0, 1, 0},
-    {0, 0, 0, 1},
-  };
-
-  set_mat4(shader, "transform", (float *)mat);
+  set_mat4(shader, "transform", transform);
   set_float(shader, "resolution", resolution);
 
   glDrawArrays(GL_TRIANGLES, 0, 6);

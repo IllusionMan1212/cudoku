@@ -68,8 +68,15 @@ int main() {
     glClearColor(0.0, 0.0, 0.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    draw_bg_rect(board_shader, board_vao, x_scale, y_scale);
-    draw_bg_lines(grid_shader, x_scale, y_scale, width < height ? width : height);
+    float transform[4][4] = {
+      {x_scale, 0, 0, 0},
+      {0, y_scale, 0, 0},
+      {0, 0, 1, 0},
+      {0, 0, 0, 1},
+    };
+
+    draw_bg_rect(board_shader, board_vao, (float *)transform);
+    draw_bg_lines(grid_shader, (float *)transform, width < height ? width : height);
 
     glXSwapBuffers(display, window);
   }
