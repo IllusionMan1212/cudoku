@@ -18,6 +18,7 @@ void read_shader_file(const char *path, char **buf) {
   fseek(fp, 0, SEEK_SET);
 
   *buf = malloc(filesize + 1);
+  (*buf)[filesize] = '\0';
 
 
   size_t bytes_read = fread(*buf, filesize, 1, fp);
