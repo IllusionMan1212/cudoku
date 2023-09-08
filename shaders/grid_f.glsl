@@ -15,12 +15,14 @@ void main()
 
     // Calculate the UV coordinates of the current fragment
     vec2 uv = (gl_FragCoord * transform).xy / vec2(resolution, resolution); // Adjust the resolution as needed
+    float scale_x = transform[0][0];
+    float scale_y = transform[1][1];
 
     // Calculate the coordinates of the current fragment in the [-1, 1] range
-    float fragCoordX = (uv.x - 0.5) * (2.0 / transform[0][0]) - 1.0;
-    float fragCoordY = (uv.y - 0.5) * (2.0 / transform[1][1]) - 1.0;
+    float fragCoordX = (uv.x - 0.5) * (2.0 / scale_x) - 1.0;
+    float fragCoordY = (uv.y - 0.5) * (2.0 / scale_y) - 1.0;
     
-    // Initialize colors for grid lines and background
+    // Colors for grid lines
     vec3 gridColor = vec3(0.4, 0.4, 0.4);
     vec3 gridColorThick = vec3(0.2, 0.2, 0.2);
 
@@ -42,6 +44,6 @@ void main()
     } else if (isGridX || isGridY) {
         FragColor = vec4(gridColor, 1.0);
     } else {
-        discard;
+        FragColor = vec4(240.f/255.f, 235.f/255.f, 227.f/255.f, 1.0);
     }
 }

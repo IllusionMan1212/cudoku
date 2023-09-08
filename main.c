@@ -1,6 +1,9 @@
 #include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
 
 #include <glad/glx.h>
+#include "3rdparty/stb/stb_image.h"
 
 #include "x11.h"
 #include "cudoku.h"
@@ -12,22 +15,29 @@
 // Simply port the js algo for sudoku generation
 // Maybe after the game works fine we can use some winapi to add windows support
 
-void scale_bg_rect(int width, int height, float *x, float *y) {
-  if (width > height) {
-    float ratio = (float)height / (float)width;
-    *x = ratio;
-    *y = 1.f;
-  } else {
-    float ratio = (float)width / (float)height;
-    *x = 1.f;
-    *y = ratio;
-  }
+void usage() {
+  printf("Usage: cudoku [OPTION]\n\n");
+  printf("  %-20s%-20s", "-h, --help", "prints this help message\n");
+  printf("  %-20s%-20s", "--use-texture", "use a texture instead of generating the grid using shaders\n");
 }
 
 Display *display;
 Window window;
 
-int main() {
+int main(int argc, char *argv[]) {
+  bool use_texture = false;
+
+  if (argc > 1) {
+    char *flag = argv[1];
+    if (strcmp(flag, "--use-texture") == 0) {
+      use_texture = true;
+    }
+    if (strcmp(flag, "-h") == 0 || strcmp(flag, "--help") == 0) {
+      usage();
+      return 0;
+    }
+  }
+
   int res = init_x11(&display, &window);
   if (res < 0) return 1;
 
@@ -37,9 +47,13 @@ int main() {
   // the window
   float x_scale = 1.f, y_scale = 1.f;
 
-  Shader board_shader = create_shader("shaders/board_v.glsl", "shaders/board_f.glsl");
-  Shader grid_shader = create_shader("shaders/grid_v.glsl", "shaders/grid_f.glsl");
-  unsigned int board_vao = prepare_bg_rect(board_shader);
+  Shader grid_shader;
+  if (!use_texture)
+    grid_shader = create_shader("shaders/board_v.glsl", "shaders/grid_f.glsl");
+  else
+    grid_shader = create_shader("shaders/board_v.glsl", "shaders/board_f.glsl");
+ 
+  int vao = prepare_bg(use_texture);
 
   bool quit = false;
   while (!quit) {
@@ -54,7 +68,7 @@ int main() {
           width = xce.width;
           height = xce.height;
           resize_x11_window(display, window);
-          scale_bg_rect(xce.width, xce.height, &x_scale, &y_scale);
+          set_scale_factor(xce.width, xce.height, &x_scale, &y_scale);
         }
 
       } else if (xev.type == KeyPress) {
@@ -75,8 +89,10 @@ int main() {
       {0, 0, 0, 1},
     };
 
-    draw_bg_rect(board_shader, board_vao, (float *)transform);
-    draw_bg_lines(grid_shader, (float *)transform, width < height ? width : height);
+    if (!use_texture)
+      draw_bg_grid_shader(grid_shader, vao, (float *)transform, width < height ? width : height);
+    else
+      draw_bg_grid_texture(grid_shader, vao, (float *)transform);
 
     glXSwapBuffers(display, window);
   }

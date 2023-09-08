@@ -1,7 +1,10 @@
 #pragma once
 
+#include <stdbool.h>
+
 #include "shader.h"
 
-unsigned int prepare_bg_rect(Shader shader);
-void draw_bg_rect(Shader shader, unsigned int vao, float* transform);
-void draw_bg_lines(Shader shader, float* transform, float resolution);
+void set_scale_factor(int width, int height, float *x, float *y);
+unsigned int prepare_bg(bool use_texture);
+void draw_bg_grid_shader(Shader shader, int vao, float* transform, float resolution);
+void draw_bg_grid_texture(Shader shader, int vao, float* transform);
