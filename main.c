@@ -1,9 +1,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include <glad/glx.h>
-#include <time.h>
 #include "3rdparty/stb/stb_image.h"
 
 #include "x11.h"

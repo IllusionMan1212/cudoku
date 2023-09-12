@@ -115,5 +115,5 @@ void draw_numbers(Shader shader, unsigned int vao, unsigned int vbo, float *tran
 void draw_win_overlay(Shader shader, unsigned int vao, unsigned int vbo, float *transform) {
   const char *text = "You won!";
   Size text_size = calculate_text_size(text, 1.0f);
-  draw_text(shader, text, text_size, 1.0f, vao, vbo, transform);
+  draw_text(shader, text, text_size, 1.5f, vao, vbo, transform);
 }
