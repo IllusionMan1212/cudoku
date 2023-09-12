@@ -175,7 +175,7 @@ void draw_number(Shader shader, int text, int row, int column, float scale, unsi
 
 void draw_text(Shader shader, const char *text, Size text_size, float scale, unsigned int vao, unsigned int vbo, float *transform) {
   use_shader(shader);
-  set_vec3f(shader, "textColor", 55.f / 255.f, 55.f / 255.f, 55.f / 255.f);
+  set_vec3f(shader, "textColor", 200.f / 255.f, 200.f / 255.f, 200.f / 255.f);
   set_mat4f(shader, "transform", transform);
   glActiveTexture(GL_TEXTURE0);
   glBindVertexArray(vao);

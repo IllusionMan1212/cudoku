@@ -91,3 +91,8 @@ void set_vec3f(Shader shader, const char *name, float val1, float val2, float va
   int loc = glGetUniformLocation(shader.program, name);
   glUniform3f(loc, val1, val2, val3);
 }
+
+void set_vec4f(Shader shader, const char *name, float val1, float val2, float val3, float val4) {
+  int loc = glGetUniformLocation(shader.program, name);
+  glUniform4f(loc, val1, val2, val3, val4);
+}

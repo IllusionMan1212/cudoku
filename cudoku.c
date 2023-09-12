@@ -91,6 +91,8 @@ void draw_bg_grid_shader(Shader shader, unsigned int vao, float* transform, floa
 
   glBindVertexArray(vao);
   glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+  glBindVertexArray(0);
 }
 
 void draw_bg_grid_texture(Shader shader, unsigned int vao, unsigned int texture, float* transform) {
@@ -116,10 +118,43 @@ void draw_numbers(Shader shader, unsigned int vao, unsigned int vbo, float *tran
   glBindVertexArray(0);
 }
 
-void draw_win_overlay(Shader shader, unsigned int vao, unsigned int vbo, float *transform) {
+unsigned int prepare_win_overlay() {
+  unsigned int vbo, vao, ebo;
+  glGenVertexArrays(1, &vao);
+  glGenBuffers(1, &vbo);
+  glGenBuffers(1, &ebo);
+
+  glBindVertexArray(vao);
+
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), quad_vertices, GL_STATIC_DRAW);
+
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quad_indices), quad_indices, GL_STATIC_DRAW);
+
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
+
+  glBindVertexArray(0);
+
+  return vao;
+}
+
+void draw_win_overlay(Shader win_shader, Shader font_shader, unsigned int vao, unsigned int font_vao, unsigned int font_vbo, float *transform) {
+  use_shader(win_shader);
+
+  set_mat4f(win_shader, "transform", transform);
+  set_vec4f(win_shader, "aColor", 0.0, 0.0, 0.0, 0.8);
+
+  glBindVertexArray(vao);
+
+  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+  glBindVertexArray(0);
+
   const char *text = "You won!";
   Size text_size = calculate_text_size(text, 1.0f);
-  draw_text(shader, text, text_size, 1.5f, vao, vbo, transform);
+  draw_text(font_shader, text, text_size, 1.5f, font_vao, font_vbo, transform);
 }
 
 void prepare_selection_box(unsigned int *vao, unsigned int *vbo) {
@@ -142,6 +177,7 @@ void draw_selection_box(Shader shader, unsigned int vao, unsigned int vbo, int x
   use_shader(shader);
 
   set_mat4f(shader, "transform", transform);
+  set_vec4f(shader, "aColor", 0.4, 0.4, 1.0, 0.5);
 
   glBindVertexArray(vao);
 
@@ -196,13 +232,13 @@ void do_selection(Cudoku *game, int x, int y, int width, int height, float x_sca
 }
 
 void set_selected_number(Cudoku *game, int number) {
-  if (game->should_draw_selection) {
+  if (game->should_draw_selection && !game->has_won) {
     game->board[game->selection.x][game->selection.y] = number;
   }
 }
 
 void move_selection(Cudoku *game, int x, int y) {
-  if (game->should_draw_selection) {
+  if (game->should_draw_selection && !game->has_won) {
     game->selection.x += y;
     game->selection.y += x;
 
@@ -221,5 +257,6 @@ void move_selection(Cudoku *game, int x, int y) {
 }
 
 void toggle_selection(Cudoku *game) {
-  game->should_draw_selection = !game->should_draw_selection;
+  if (!game->has_won)
+    game->should_draw_selection = !game->should_draw_selection;
 }

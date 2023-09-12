@@ -25,17 +25,32 @@ void handle_keypress(XEvent xev, Cudoku *game) {
     /* reset_board(&game); */
   } else if (XLookupKeysym(&xev.xkey, 0) >= XK_0 && XLookupKeysym(&xev.xkey, 0) <= XK_9) {
     set_selected_number(game, XLookupKeysym(&xev.xkey, 0) - XK_0);
-  } else if (XLookupKeysym(&xev.xkey, 0) == XK_BackSpace || XLookupKeysym(&xev.xkey, 0) == XK_Delete) {
+  } else if (XLookupKeysym(&xev.xkey, 0) == XK_BackSpace ||
+      XLookupKeysym(&xev.xkey, 0) == XK_Delete) {
     set_selected_number(game, 0);
-  } else if (XLookupKeysym(&xev.xkey, 0) == XK_Left || XLookupKeysym(&xev.xkey, 0) == XK_a || XLookupKeysym(&xev.xkey, 0) == XK_h) {
+  } else if (
+      XLookupKeysym(&xev.xkey, 0) == XK_Left ||
+      XLookupKeysym(&xev.xkey, 0) == XK_a ||
+      XLookupKeysym(&xev.xkey, 0) == XK_h) {
     move_selection(game, -1, 0);
-  } else if (XLookupKeysym(&xev.xkey, 0) == XK_Right || XLookupKeysym(&xev.xkey, 0) == XK_d || XLookupKeysym(&xev.xkey, 0) == XK_l) {
+  } else if (
+      XLookupKeysym(&xev.xkey, 0) == XK_Right ||
+      XLookupKeysym(&xev.xkey, 0) == XK_d ||
+      XLookupKeysym(&xev.xkey, 0) == XK_l) {
     move_selection(game, 1, 0);
-  } else if (XLookupKeysym(&xev.xkey, 0) == XK_Up || XLookupKeysym(&xev.xkey, 0) == XK_w || XLookupKeysym(&xev.xkey, 0) == XK_k) {
+  } else if (
+      XLookupKeysym(&xev.xkey, 0) == XK_Up ||
+      XLookupKeysym(&xev.xkey, 0) == XK_w ||
+      XLookupKeysym(&xev.xkey, 0) == XK_k) {
     move_selection(game, 0, -1);
-  } else if (XLookupKeysym(&xev.xkey, 0) == XK_Down || XLookupKeysym(&xev.xkey, 0) == XK_s || XLookupKeysym(&xev.xkey, 0) == XK_j) {
+  } else if (
+      XLookupKeysym(&xev.xkey, 0) == XK_Down ||
+      XLookupKeysym(&xev.xkey, 0) == XK_s ||
+      XLookupKeysym(&xev.xkey, 0) == XK_j) {
     move_selection(game, 0, 1);
-  } else if (XLookupKeysym(&xev.xkey, 0) == XK_Return || XLookupKeysym(&xev.xkey, 0) == XK_space) {
+  } else if (
+      XLookupKeysym(&xev.xkey, 0) == XK_Return ||
+      XLookupKeysym(&xev.xkey, 0) == XK_space) {
     toggle_selection(game);
   /* } else if (XLookupKeysym(&xev.xkey, 0) == XK_n) { */
   /*   new_board(&game); */
@@ -121,6 +136,9 @@ int main(int argc, char *argv[]) {
   unsigned int selection_vao, selection_vbo;
   prepare_selection_box(&selection_vao, &selection_vbo);
 
+  Shader win_shader = create_shader("shaders/board_v.vert", "shaders/quad.frag");
+  unsigned int win_vao = prepare_win_overlay();
+
   srand(time(NULL));
 
   for (int i = 0; i < 9; i++) {
@@ -148,7 +166,8 @@ int main(int argc, char *argv[]) {
         }
 
       } else if (xev.type == KeyPress) {
-        if (XLookupKeysym(&xev.xkey, 0) == XK_Escape || XLookupKeysym(&xev.xkey, 0) == XK_q) {
+        if (XLookupKeysym(&xev.xkey, 0) == XK_Escape ||
+            (XLookupKeysym(&xev.xkey, 0) == XK_q && xev.xkey.state & ControlMask)) {
           quit = true;
           break;
         } else {
@@ -179,12 +198,18 @@ int main(int argc, char *argv[]) {
       draw_bg_grid_texture(grid_shader, board_vao, grid_texture, (float *)transform);
 
     if (game.should_draw_selection)
-      draw_selection_box(selection_shader, selection_vao, selection_vbo, game.selection.x, game.selection.y, (float *)transform);
+      draw_selection_box(
+          selection_shader,
+          selection_vao,
+          selection_vbo,
+          game.selection.x,
+          game.selection.y,
+          (float *)transform);
 
     draw_numbers(font_shader, font_vao, font_vbo, (float *)transform, game.board);
 
     if (game.has_won) {
-      draw_win_overlay(font_shader, font_vao, font_vbo, (float *)transform);
+      draw_win_overlay(win_shader, font_shader, win_vao, font_vao, font_vbo, (float *)transform);
     }
 
     glXSwapBuffers(display, window);
