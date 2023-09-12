@@ -9,7 +9,7 @@ void read_shader_file(const char *path, char **buf) {
   FILE *fp = fopen(path, "rb");
 
   if (!fp) {
-    printf("Could not open file %s", path);
+    printf("Could not open file \"%s\"\n", path);
     exit(1);
   }
 
@@ -20,12 +20,7 @@ void read_shader_file(const char *path, char **buf) {
   *buf = malloc(filesize + 1);
   (*buf)[filesize] = '\0';
 
-
-  size_t bytes_read = fread(*buf, filesize, 1, fp);
-  if (bytes_read != sizeof(**buf)) {
-    printf("Failed to fully read file %s", path);
-    exit(1);
-  }
+  fread(*buf, filesize, 1, fp);
 
   fclose(fp);
 }
@@ -82,7 +77,7 @@ void use_shader(Shader shader) {
   glUseProgram(shader.program);
 }
 
-void set_mat4(Shader shader, const char *name, float *mat4) {
+void set_mat4f(Shader shader, const char *name, float *mat4) {
   int loc = glGetUniformLocation(shader.program, name);
   glUniformMatrix4fv(loc, 1, GL_FALSE, mat4);
 }
@@ -90,4 +85,9 @@ void set_mat4(Shader shader, const char *name, float *mat4) {
 void set_float(Shader shader, const char *name, float val) {
   int loc = glGetUniformLocation(shader.program, name);
   glUniform1f(loc, val);
+}
+
+void set_vec3f(Shader shader, const char *name, float val1, float val2, float val3) {
+  int loc = glGetUniformLocation(shader.program, name);
+  glUniform3f(loc, val1, val2, val3);
 }

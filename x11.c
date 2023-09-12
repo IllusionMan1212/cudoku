@@ -29,7 +29,8 @@ int init_x11(Display **display, Window *window) {
   colormap = XCreateColormap(*display, root, visual, AllocNone);
 
   XSetWindowAttributes attributes;
-  attributes.event_mask = ExposureMask | KeyPressMask | KeyReleaseMask | StructureNotifyMask;
+  attributes.event_mask = ExposureMask | KeyPressMask | KeyReleaseMask |
+    StructureNotifyMask | ButtonPressMask;
   attributes.colormap = colormap;
 
   *window = XCreateWindow(*display, root, 0, 0, win_width, win_height, 0,
@@ -91,6 +92,10 @@ int init_x11(Display **display, Window *window) {
 
   XWindowAttributes win_attrs;
   XGetWindowAttributes(*display, *window, &win_attrs);
+
+  // we enable blending for text
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glViewport(0, 0, win_attrs.width, win_attrs.height);
   resize_x11_window(*display, *window);
 
