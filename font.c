@@ -36,7 +36,7 @@ int init_fonts(const char *font_path) {
 
   for (int i = 0; i < 9; i++) {
     if (FT_Load_Char(face, '0' + (i + 1), FT_LOAD_RENDER)) {
-      printf("Error: failed to load glyph for number '%c'\n", '0' + i);
+      printf("[ERROR]: failed to load glyph for number '%c'\n", '0' + i);
     }
 
     unsigned int texture;
@@ -61,7 +61,7 @@ int init_fonts(const char *font_path) {
 
   for (int c = 0; c < 128; c++) {
     if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
-      printf("Error: failed to load glyph for char '%c'\n", c);
+      printf("[ERROR]: failed to load glyph for char '%c'\n", c);
     }
 
     unsigned int texture;
@@ -164,6 +164,7 @@ void draw_number(Shader shader, int text, int row, int column, float scale, unsi
 
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 
   glDrawArrays(GL_TRIANGLES, 0, 6);

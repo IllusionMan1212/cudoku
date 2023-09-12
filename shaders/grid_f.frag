@@ -31,12 +31,13 @@ void main()
     bool isInsideGrid = isInsideGridHorizontally && isInsideGridVertically;
 
     // Determine if the current fragment is on a thicker grid line
-    bool isThickLineX = isInsideGrid && mod(fragCoordX, stepSize * 3) < 0.01;
-    bool isThickLineY = isInsideGrid && mod(fragCoordY, stepSize * 3) < 0.01;
+    bool isThickLineX = isInsideGrid && mod(fragCoordX, (stepSize + 0.0007) * 3) <= 0.01;
+    bool isThickLineY = isInsideGrid && mod(fragCoordY, (stepSize + 0.0007) * 3) <= 0.01;
 
     // Check if the current fragment is on a grid line
-    bool isGridX = isInsideGrid && mod(fragCoordX, stepSize) < 0.005;
-    bool isGridY = isInsideGrid && mod(fragCoordY, stepSize) < 0.005;
+    // 0.0007 to shift the grid lines a bit to the left
+    bool isGridX = isInsideGrid && mod(fragCoordX, stepSize + 0.0007) <= 0.005;
+    bool isGridY = isInsideGrid && mod(fragCoordY, stepSize + 0.0007) <= 0.005;
     
     // Set the fragment color based on whether it's a grid line or a thicker grid line
     if ((isThickLineX) || (isThickLineY)) {

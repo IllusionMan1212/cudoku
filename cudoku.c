@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include <glad/gl.h>
 #include "3rdparty/stb/stb_image.h"
@@ -99,21 +100,126 @@ void draw_bg_grid_texture(Shader shader, unsigned int vao, unsigned int texture,
   glBindVertexArray(vao);
   glBindTexture(GL_TEXTURE_2D, texture);
   glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+  glBindVertexArray(0);
 }
 
 void draw_numbers(Shader shader, unsigned int vao, unsigned int vbo, float *transform, int board[9][9]) {
-  // TODO: go thru the board state and call draw_text() with the appropriate number
-  // and position
-
   for (int i = 0; i < 9; i++) {
     for (int j = 0; j < 9; j++) {
-      draw_number(shader, board[i][j], i, j, 5.0f, vao, vbo, transform);
+      if (board[i][j] != 0) {
+        draw_number(shader, board[i][j], i, j, 5.0f, vao, vbo, transform);
+      }
     }
   }
+
+  glBindVertexArray(0);
 }
 
 void draw_win_overlay(Shader shader, unsigned int vao, unsigned int vbo, float *transform) {
   const char *text = "You won!";
   Size text_size = calculate_text_size(text, 1.0f);
   draw_text(shader, text, text_size, 1.5f, vao, vbo, transform);
+}
+
+void prepare_selection_box(unsigned int *vao, unsigned int *vbo) {
+  glGenVertexArrays(1, &(*vao));
+  glGenBuffers(1, &(*vbo));
+
+  glBindVertexArray(*vao);
+  glBindBuffer(GL_ARRAY_BUFFER, *vbo);
+
+  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6*2, NULL, GL_DYNAMIC_DRAW);
+
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), 0);
+
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
+}
+
+void draw_selection_box(Shader shader, unsigned int vao, unsigned int vbo, int x, int y, float *transform) {
+  use_shader(shader);
+
+  set_mat4f(shader, "transform", transform);
+
+  glBindVertexArray(vao);
+
+  float vert = 0.11f;
+  // get size of a single cell in opengl coords (-1, 1)
+  float single_cell = (1.f/9.f) * 2;
+  // we minus 4 since we start at column and row 4 (0-indexed)
+  float offset_x = single_cell * (y - 4);
+  float offset_y = single_cell * (x - 4);
+
+  float vertices[6][2] = {
+    // top left tri
+    { -vert + offset_x, -vert - offset_y },
+    { -vert + offset_x,  vert - offset_y },
+    {  vert + offset_x,  vert - offset_y },
+
+    // bottom right tri
+    { -vert + offset_x, -vert - offset_y },
+    {  vert + offset_x,  vert - offset_y },
+    {  vert + offset_x, -vert - offset_y }
+  };
+
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+  glDrawArrays(GL_TRIANGLES, 0, 6);
+
+  glBindVertexArray(0);
+}
+
+void do_selection(Cudoku *game, int x, int y, int width, int height, float x_scale, float y_scale) {
+  float board_x_start = (width / 2.f) - ((width * x_scale) / 2);
+  float board_y_start = (height / 2.f) - ((height * y_scale) / 2);
+
+  float cell_width = (width * x_scale) / 9.f;
+  float cell_height = (height * y_scale) / 9.f;
+
+
+  int cell_x = floor((x - board_x_start) / cell_width);
+  int cell_y = floor((y - board_y_start) / cell_height);
+
+  if (cell_x < 0 || cell_x > 8 || cell_y < 0 || cell_y > 8) {
+    game->should_draw_selection = false;
+    return;
+  }
+
+  game->should_draw_selection = true;
+  game->selection.x = cell_y;
+  game->selection.y = cell_x;
+}
+
+void set_selected_number(Cudoku *game, int number) {
+  if (game->should_draw_selection) {
+    game->board[game->selection.x][game->selection.y] = number;
+  }
+}
+
+void move_selection(Cudoku *game, int x, int y) {
+  if (game->should_draw_selection) {
+    game->selection.x += y;
+    game->selection.y += x;
+
+    if (game->selection.x < 0) {
+      game->selection.x = 0;
+    } else if (game->selection.x > 8) {
+      game->selection.x = 8;
+    }
+
+    if (game->selection.y < 0) {
+      game->selection.y = 0;
+    } else if (game->selection.y > 8) {
+      game->selection.y = 8;
+    }
+  }
+}
+
+void toggle_selection(Cudoku *game) {
+  game->should_draw_selection = !game->should_draw_selection;
 }

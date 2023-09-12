@@ -10,6 +10,9 @@
 #include "cudoku.h"
 #include "font.h"
 
+Display *display;
+Window window;
+
 void usage() {
   printf("Usage: cudoku [OPTION]\n\n");
   printf("  %-20s%-20s", "-h, --help", "prints this help message\n");
@@ -17,8 +20,35 @@ void usage() {
   printf("  %-20s%-20s", "-f, --font FONT", "use a custom font file to render text\n");
 }
 
-Display *display;
-Window window;
+void handle_keypress(XEvent xev, Cudoku *game) {
+  if (XLookupKeysym(&xev.xkey, 0) == XK_r) {
+    /* reset_board(&game); */
+  } else if (XLookupKeysym(&xev.xkey, 0) >= XK_0 && XLookupKeysym(&xev.xkey, 0) <= XK_9) {
+    set_selected_number(game, XLookupKeysym(&xev.xkey, 0) - XK_0);
+  } else if (XLookupKeysym(&xev.xkey, 0) == XK_BackSpace || XLookupKeysym(&xev.xkey, 0) == XK_Delete) {
+    set_selected_number(game, 0);
+  } else if (XLookupKeysym(&xev.xkey, 0) == XK_Left || XLookupKeysym(&xev.xkey, 0) == XK_a || XLookupKeysym(&xev.xkey, 0) == XK_h) {
+    move_selection(game, -1, 0);
+  } else if (XLookupKeysym(&xev.xkey, 0) == XK_Right || XLookupKeysym(&xev.xkey, 0) == XK_d || XLookupKeysym(&xev.xkey, 0) == XK_l) {
+    move_selection(game, 1, 0);
+  } else if (XLookupKeysym(&xev.xkey, 0) == XK_Up || XLookupKeysym(&xev.xkey, 0) == XK_w || XLookupKeysym(&xev.xkey, 0) == XK_k) {
+    move_selection(game, 0, -1);
+  } else if (XLookupKeysym(&xev.xkey, 0) == XK_Down || XLookupKeysym(&xev.xkey, 0) == XK_s || XLookupKeysym(&xev.xkey, 0) == XK_j) {
+    move_selection(game, 0, 1);
+  } else if (XLookupKeysym(&xev.xkey, 0) == XK_Return || XLookupKeysym(&xev.xkey, 0) == XK_space) {
+    toggle_selection(game);
+  /* } else if (XLookupKeysym(&xev.xkey, 0) == XK_n) { */
+  /*   new_board(&game); */
+  /* } else if (XLookupKeysym(&xev.xkey, 0) == XK_f) { */
+  /*   toggle_fullscreen(display, window); */
+  /* } else if (XLookupKeysym(&xev.xkey, 0) == XK_c) { */
+  /*   toggle_check(&game); */
+  /* } else if (XLookupKeysym(&xev.xkey, 0) == XK_m) { */
+  /*   toggle_mute(&game); */
+  /* } else if (XLookupKeysym(&xev.xkey, 0) == XK_F1) { */
+  /*   toggle_help(&game); */
+  }
+}
 
 int main(int argc, char *argv[]) {
   const char *font_path = "assets/fonts/Rubik/Rubik-VariableFont_wght.ttf";
@@ -46,23 +76,31 @@ int main(int argc, char *argv[]) {
           font_path = argv[i + 1];
           i++;
         } else {
-          printf("Error: used font flag with no provided font, defaulting to Rubik\n");
+          printf("[ERROR]: used font flag with no provided font, defaulting to Rubik\n");
         }
       } else if (strcmp(flag, "--use-texture") == 0) {
-        use_texture = true;
+        FILE *fp = fopen("assets/sudoku-grid.png", "r");
+        if (fp == NULL) {
+          printf("[ERROR]: could not open board texture, falling back to shader grid\n");
+        } else {
+          fclose(fp);
+          use_texture = true;
+        }
       }
     }
   }
+
+  Cudoku game = {0};
 
   int res = init_x11(&display, &window);
   if (res < 0) return 1;
 
   res = init_fonts(font_path);
   if (res == -1) {
-    printf("Error: could not initialize freetype library\n");
+    printf("[ERROR]: could not initialize freetype library\n");
     return 1;
   } else if (res == -2) {
-    printf("Error: could not load font file: \"%s\"\n", font_path);
+    printf("[ERROR]: could not load font file: \"%s\"\n", font_path);
     return 1;
   }
 
@@ -77,31 +115,17 @@ int main(int argc, char *argv[]) {
   else
     grid_shader = create_shader("shaders/board_v.vert", "shaders/board_f.frag");
  
-  int vao = prepare_bg(use_texture, &grid_texture);
+  int board_vao = prepare_bg(use_texture, &grid_texture);
 
-  int board[9][9] = {
-    {0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0},
-  };
+  Shader selection_shader = create_shader("shaders/board_v.vert", "shaders/quad.frag");
+  unsigned int selection_vao, selection_vbo;
+  prepare_selection_box(&selection_vao, &selection_vbo);
+
   srand(time(NULL));
 
   for (int i = 0; i < 9; i++) {
     for (int j = 0; j < 9; j++) {
-      int r = (rand() % 9) + 1;
-      board[i][j] = r;
-    }
-  }
-
-  for (int i = 0; i < 9; i++) {
-    for (int j = 0; j < 9; j++) {
-      printf("%d | ", board[i][j]);
+      printf("%d | ", game.board[i][j]);
     }
     printf("\n");
   }
@@ -127,13 +151,14 @@ int main(int argc, char *argv[]) {
         if (XLookupKeysym(&xev.xkey, 0) == XK_Escape || XLookupKeysym(&xev.xkey, 0) == XK_q) {
           quit = true;
           break;
+        } else {
+          handle_keypress(xev, &game);
         }
       } else if (xev.type == ButtonPress) {
         if (xev.xbutton.button == Button1) {
           int x = xev.xbutton.x;
           int y = xev.xbutton.y;
-          // TOOD:
-          printf("x: %d, y: %d\n", x, y);
+          do_selection(&game, x, y, width, height, x_scale, y_scale);
         }
       }
     }
@@ -149,11 +174,18 @@ int main(int argc, char *argv[]) {
     };
 
     if (!use_texture)
-      draw_bg_grid_shader(grid_shader, vao, (float *)transform, width < height ? width : height);
+      draw_bg_grid_shader(grid_shader, board_vao, (float *)transform, width < height ? width : height);
     else
-      draw_bg_grid_texture(grid_shader, vao, grid_texture, (float *)transform);
-    /* draw_numbers(font_shader, font_vao, font_vbo, (float *)transform, board); */
-    draw_win_overlay(font_shader, font_vao, font_vbo, (float *)transform);
+      draw_bg_grid_texture(grid_shader, board_vao, grid_texture, (float *)transform);
+
+    if (game.should_draw_selection)
+      draw_selection_box(selection_shader, selection_vao, selection_vbo, game.selection.x, game.selection.y, (float *)transform);
+
+    draw_numbers(font_shader, font_vao, font_vbo, (float *)transform, game.board);
+
+    if (game.has_won) {
+      draw_win_overlay(font_shader, font_vao, font_vbo, (float *)transform);
+    }
 
     glXSwapBuffers(display, window);
   }
