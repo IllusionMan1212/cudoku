@@ -260,3 +260,132 @@ void toggle_selection(Cudoku *game) {
   if (!game->has_won)
     game->should_draw_selection = !game->should_draw_selection;
 }
+
+void remove_arr_element(int *arr, int index, int size) {
+  for (int i = index; i < size - 1; i++) {
+    arr[i] = arr[i + 1];
+  }
+}
+
+bool get_candidates(int board[9][9], int row, int col, int candidates[], int *size) {
+  // use this as a set to check if a number is already in the row, col, or box
+  // 0 is no clash, 1 is clash
+  int clashingDigits[9] = {0};
+  // check row
+  for (int i = 0; i < 9; i++) {
+    if (board[row][i] != 0) {
+      clashingDigits[board[row][i] - 1] = 1;
+    }
+  }
+
+  // check col
+  for (int i = 0; i < 9; i++) {
+    if (board[i][col] != 0) {
+      clashingDigits[board[i][col] - 1] = 1;
+    }
+  }
+
+  // check box
+  int box_row = floor(row / 3.f) * 3;
+  int box_col = floor(col / 3.f) * 3;
+  for (int i = box_row; i < box_row + 3; i++) {
+    for (int j = box_col; j < box_col + 3; j++) {
+      if (board[i][j] != 0) {
+        clashingDigits[board[i][j] - 1] = 1;
+      }
+    }
+  }
+
+  for (int i = 0; i < 9; i++) {
+    if (clashingDigits[i] != 1) {
+      candidates[(*size)++] = i + 1;
+    }
+  }
+
+  return true;
+}
+
+bool backtracker(Cudoku *game, int start_row, int start_col) {
+  // if we went thru all the cols but not all the rows
+  if (start_col >= 9 && start_row < 9 - 1) {
+    start_row++;
+    start_col = 0;
+  }
+
+  // if we went thru the entire board
+  if (start_row >= 8 && start_col >= 9) {
+    return true;
+  }
+
+  // if we're at diagonal box 1, 5 or 9, skip it
+  if (start_row < 3) {
+    if (start_col < 3) {
+      start_col = 3;
+    }
+  } else if (start_row < 6) {
+    if (start_col == (floor(start_row / 3.f) * 3)) {
+      start_col += 3;
+    }
+  } else {
+    if (start_col == 6) {
+      start_row++;
+      start_col = 0;
+      if (start_row >= 9) {
+        return true;
+      }
+    }
+  }
+
+  int num_candidates = 0;
+  int candidates[9] = {0};
+  get_candidates(game->board, start_row, start_col, candidates, &num_candidates);
+
+  // try every candidate until we find one that uniquely solves the board.
+  while (num_candidates) {
+    uint rand_idx = rand() % num_candidates;
+    uint candidate = candidates[rand_idx];
+    remove_arr_element(candidates, rand_idx, num_candidates);
+    num_candidates--;
+    game->board[start_row][start_col] = candidate;
+    if (backtracker(game, start_row, start_col + 1)) {
+      return true;
+    }
+    game->board[start_row][start_col] = 0;
+  }
+
+  // if no candidates, we backtrack and try something else.
+  return false;
+}
+
+void generate_random_board(Cudoku *game) {
+  int size = 9;
+  // fill diagonal boxes 1, 5, 9
+  int digits[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  for (int row = 0; row < 9; row++) {
+    if (row % 3 == 0) {
+      for (int l = 0; l < 9; l++) {
+        digits[l] = l + 1;
+      }
+      size = 9;
+    }
+
+    const int k = floor(row / 3.f) * 3;
+    for (int j = k; j < k + 3; j++) {
+      int rand_idx = rand() % size;
+      int num = digits[rand_idx];
+      remove_arr_element(digits, rand_idx, size--);
+      game->board[row][j] = num;
+    }
+  }
+
+  // fill the rest of the boxes
+  backtracker(game, 0, 3);
+
+  // copy the board to the solution
+  for (int i = 0; i < 9; i++) {
+    for (int j = 0; j < 9; j++) {
+      game->solution[i][j] = game->board[i][j];
+    }
+  }
+}
+

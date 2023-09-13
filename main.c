@@ -105,8 +105,6 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  Cudoku game = {0};
-
   int res = init_x11(&display, &window);
   if (res < 0) return 1;
 
@@ -118,6 +116,19 @@ int main(int argc, char *argv[]) {
     printf("[ERROR]: could not load font file: \"%s\"\n", font_path);
     return 1;
   }
+
+  srand(time(NULL));
+
+  Cudoku game = {0};
+  generate_random_board(&game);
+
+  for (int i = 0; i < 9; i++) {
+    for (int j = 0; j < 9; j++) {
+      printf("%d | ", game.board[i][j]);
+    }
+    printf("\n");
+  }
+  printf("\n");
 
   unsigned int font_vao, font_vbo;
   prepare_font(&font_vao, &font_vbo);
@@ -138,16 +149,6 @@ int main(int argc, char *argv[]) {
 
   Shader win_shader = create_shader("shaders/board_v.vert", "shaders/quad.frag");
   unsigned int win_vao = prepare_win_overlay();
-
-  srand(time(NULL));
-
-  for (int i = 0; i < 9; i++) {
-    for (int j = 0; j < 9; j++) {
-      printf("%d | ", game.board[i][j]);
-    }
-    printf("\n");
-  }
-  printf("\n");
 
   bool quit = false;
   while (!quit) {

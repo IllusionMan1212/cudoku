@@ -11,6 +11,7 @@ typedef struct Vec2 {
 
 typedef struct Cudoku {
   int board[9][9];
+  int solution[9][9];
   bool has_won;
   Vec2 selection;
   bool should_draw_selection;
@@ -29,3 +30,4 @@ void do_selection(Cudoku *game, int x, int y, int width, int height, float x_sca
 void set_selected_number(Cudoku *game, int number);
 void move_selection(Cudoku *game, int x, int y);
 void toggle_selection(Cudoku *game);
+void generate_random_board(Cudoku *game);
