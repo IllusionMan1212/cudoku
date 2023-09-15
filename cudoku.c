@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 
 #include <glad/gl.h>
 #include "3rdparty/stb/stb_image.h"
@@ -106,10 +107,10 @@ void draw_bg_grid_texture(Shader shader, unsigned int vao, unsigned int texture,
   glBindVertexArray(0);
 }
 
-void draw_numbers(Shader shader, unsigned int vao, unsigned int vbo, float *transform, int board[9][9]) {
+void draw_numbers(Shader shader, unsigned int vao, unsigned int vbo, float *transform, Cell board[9][9]) {
   for (int i = 0; i < 9; i++) {
     for (int j = 0; j < 9; j++) {
-      if (board[i][j] != 0) {
+      if (board[i][j].value != 0) {
         draw_number(shader, board[i][j], i, j, 5.0f, vao, vbo, transform);
       }
     }
@@ -231,9 +232,24 @@ void do_selection(Cudoku *game, int x, int y, int width, int height, float x_sca
   game->selection.y = cell_x;
 }
 
+bool check_win(Cudoku *game) {
+  for (int i = 0; i < 9; i++) {
+    for (int j = 0; j < 9; j++) {
+      if (game->board[i][j].is_locked) continue;
+      if (game->board[i][j].value != game->solution[i][j]) return false;
+    }
+  }
+
+  game->has_won = true;
+  game->should_draw_selection = false;
+
+  return true;
+}
+
 void set_selected_number(Cudoku *game, int number) {
-  if (game->should_draw_selection && !game->has_won) {
-    game->board[game->selection.x][game->selection.y] = number;
+  if (game->should_draw_selection && !game->has_won && !game->board[game->selection.x][game->selection.y].is_locked) {
+    game->board[game->selection.x][game->selection.y].value = number;
+    check_win(game);
   }
 }
 
@@ -267,21 +283,21 @@ void remove_arr_element(int *arr, int index, int size) {
   }
 }
 
-bool get_candidates(int board[9][9], int row, int col, int candidates[], int *size) {
+void get_candidates(Cell board[9][9], int row, int col, int candidates[], int *size) {
   // use this as a set to check if a number is already in the row, col, or box
   // 0 is no clash, 1 is clash
   int clashingDigits[9] = {0};
   // check row
   for (int i = 0; i < 9; i++) {
-    if (board[row][i] != 0) {
-      clashingDigits[board[row][i] - 1] = 1;
+    if (board[row][i].value != 0) {
+      clashingDigits[board[row][i].value - 1] = 1;
     }
   }
 
   // check col
   for (int i = 0; i < 9; i++) {
-    if (board[i][col] != 0) {
-      clashingDigits[board[i][col] - 1] = 1;
+    if (board[i][col].value != 0) {
+      clashingDigits[board[i][col].value - 1] = 1;
     }
   }
 
@@ -290,8 +306,8 @@ bool get_candidates(int board[9][9], int row, int col, int candidates[], int *si
   int box_col = floor(col / 3.f) * 3;
   for (int i = box_row; i < box_row + 3; i++) {
     for (int j = box_col; j < box_col + 3; j++) {
-      if (board[i][j] != 0) {
-        clashingDigits[board[i][j] - 1] = 1;
+      if (board[i][j].value != 0) {
+        clashingDigits[board[i][j].value - 1] = 1;
       }
     }
   }
@@ -301,8 +317,6 @@ bool get_candidates(int board[9][9], int row, int col, int candidates[], int *si
       candidates[(*size)++] = i + 1;
     }
   }
-
-  return true;
 }
 
 bool backtracker(Cudoku *game, int start_row, int start_col) {
@@ -346,15 +360,107 @@ bool backtracker(Cudoku *game, int start_row, int start_col) {
     uint candidate = candidates[rand_idx];
     remove_arr_element(candidates, rand_idx, num_candidates);
     num_candidates--;
-    game->board[start_row][start_col] = candidate;
+    game->board[start_row][start_col].value = candidate;
+    game->board[start_row][start_col].is_locked = true;
     if (backtracker(game, start_row, start_col + 1)) {
       return true;
     }
-    game->board[start_row][start_col] = 0;
+    game->board[start_row][start_col].value = 0;
+    game->board[start_row][start_col].is_locked = false;
   }
 
   // if no candidates, we backtrack and try something else.
   return false;
+}
+
+bool solver(int *solutions, Vec2 empty_cells[81], int empty_cells_size, Cell board[9][9]) {
+  if (empty_cells_size) {
+    (*solutions)++;
+    if (*solutions > 1) {
+      return false;
+    }
+    return true;
+  }
+
+  int rand_idx = rand() % empty_cells_size;
+  Vec2 rand_empty_cell = empty_cells[rand_idx];
+
+  int candidates_size = 0;
+  int candidates[9];
+  get_candidates(board, rand_empty_cell.x, rand_empty_cell.y, candidates, &candidates_size);
+
+  while (candidates_size) {
+    rand_idx = rand() % candidates_size;
+    int candidate = candidates[rand_idx];
+    remove_arr_element(candidates, rand_idx, candidates_size--);
+
+    Cell cell = { .is_locked = true, .value = candidate };
+    board[rand_empty_cell.x][rand_empty_cell.y] = cell;
+    if (solver(solutions, empty_cells, empty_cells_size, board)) {
+      return true;
+    }
+
+    // reset the cell
+    cell.value = 0;
+    cell.is_locked = false;
+    board[rand_empty_cell.x][rand_empty_cell.y] = cell;
+  }
+
+  empty_cells_size++;
+  empty_cells[empty_cells_size] = rand_empty_cell;
+
+  return false;
+}
+
+void remove_numbers(Cudoku *game) {
+  int solutions = 0;
+  int removed_cells_size = 0;
+  Vec2 removed_cells[81];
+
+  int filled_cells_size = 81;
+  int filled_cells[81];
+  for (int i = 0; i < filled_cells_size; i++) {
+    filled_cells[i] = i;
+  }
+
+  while (filled_cells_size) {
+    solutions = 0;
+
+    int rand_idx = rand() % filled_cells_size;
+    int cell = filled_cells[rand_idx];
+    remove_arr_element(filled_cells, rand_idx, filled_cells_size--);
+    int removed_row = floor(cell / 9.f);
+    int removed_col = cell % 9;
+
+    Cell removed_cell = game->board[removed_row][removed_col];
+    Cell empty = {0};
+    game->board[removed_row][removed_col] = empty;
+
+    Vec2 removed_cell_coords = {.x = removed_row, .y = removed_col};
+    removed_cells[removed_cells_size] = removed_cell_coords;
+    removed_cells_size++;
+
+    int candidates_size = 0;
+    int candidates[9];
+    get_candidates(game->board, removed_row, removed_col, candidates, &candidates_size);
+
+    Vec2 removed_cells_cpy[81];
+    Cell board_cpy[9][9];
+
+    while (candidates_size) {
+      candidates_size--;
+
+      memcpy(removed_cells_cpy, removed_cells, sizeof(Cell) * removed_cells_size);
+      memcpy(board_cpy, game->board, sizeof(Cell) * 81);
+      solver(&solutions, removed_cells_cpy, removed_cells_size, board_cpy);
+
+      if (solutions > 1) {
+        game->board[removed_row][removed_col] = removed_cell;
+        removed_cells_size--;
+        break;
+      }
+    }
+  }
 }
 
 void generate_random_board(Cudoku *game) {
@@ -374,7 +480,8 @@ void generate_random_board(Cudoku *game) {
       int rand_idx = rand() % size;
       int num = digits[rand_idx];
       remove_arr_element(digits, rand_idx, size--);
-      game->board[row][j] = num;
+      game->board[row][j].value = num;
+      game->board[row][j].is_locked = true;
     }
   }
 
@@ -384,8 +491,11 @@ void generate_random_board(Cudoku *game) {
   // copy the board to the solution
   for (int i = 0; i < 9; i++) {
     for (int j = 0; j < 9; j++) {
-      game->solution[i][j] = game->board[i][j];
+      game->solution[i][j] = game->board[i][j].value;
     }
   }
+
+  remove_numbers(game);
 }
+
 

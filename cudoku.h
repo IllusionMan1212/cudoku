@@ -9,8 +9,13 @@ typedef struct Vec2 {
   int y;
 } Vec2;
 
+typedef struct Cell {
+  int value;
+  bool is_locked;
+} Cell;
+
 typedef struct Cudoku {
-  int board[9][9];
+  Cell board[9][9];
   int solution[9][9];
   bool has_won;
   Vec2 selection;
@@ -21,7 +26,7 @@ void set_scale_factor(int width, int height, float *x, float *y);
 unsigned int prepare_bg(bool use_texture, unsigned int *texture);
 void draw_bg_grid_shader(Shader shader, unsigned int vao, float* transform, float resolution);
 void draw_bg_grid_texture(Shader shader, unsigned int vao, unsigned int texture, float* transform);
-void draw_numbers(Shader shader, unsigned int vao, unsigned int vbo, float *transform, int board[9][9]);
+void draw_numbers(Shader shader, unsigned int vao, unsigned int vbo, float *transform, Cell board[9][9]);
 unsigned int prepare_win_overlay();
 void draw_win_overlay(Shader win_shader, Shader font_shader, unsigned int vao, unsigned int font_vao, unsigned int font_vbo, float *transform);
 void prepare_selection_box(unsigned int *vao, unsigned int *vbo);

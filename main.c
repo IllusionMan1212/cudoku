@@ -124,7 +124,11 @@ int main(int argc, char *argv[]) {
 
   for (int i = 0; i < 9; i++) {
     for (int j = 0; j < 9; j++) {
-      printf("%d | ", game.board[i][j]);
+      if (game.board[i][j].value) {
+        printf("%d | ", game.board[i][j].value);
+      } else {
+        printf("  | ");
+      }
     }
     printf("\n");
   }

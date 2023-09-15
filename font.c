@@ -124,14 +124,18 @@ Size calculate_text_size(const char *text, float scale) {
   return size;
 }
 
-void draw_number(Shader shader, int text, int row, int column, float scale, unsigned int vao, unsigned int vbo, float *transform) {
+void draw_number(Shader shader, Cell cell, int row, int column, float scale, unsigned int vao, unsigned int vbo, float *transform) {
   use_shader(shader);
-  set_vec3f(shader, "textColor", 44.f / 255.f, 54.f / 255.f, 57.f / 255.f);
+  if (cell.is_locked) {
+    set_vec3f(shader, "textColor", 44.f / 255.f, 54.f / 255.f, 57.f / 255.f);
+  } else {
+    set_vec3f(shader, "textColor", 110.f / 255.f, 133.f / 255.f, 183.f / 255.f);
+  }
   set_mat4f(shader, "transform", transform);
   glActiveTexture(GL_TEXTURE0);
   glBindVertexArray(vao);
 
-  Character ch = numbers[text - 1];
+  Character ch = numbers[cell.value - 1];
 
   float w = ch.size.width;
   float h = ch.size.height;
