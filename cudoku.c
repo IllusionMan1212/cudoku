@@ -12,7 +12,7 @@
 #include "shader.h"
 #include "helper.h"
 
-#define help_text_size 12
+#define help_text_size 13
 
 static const float quad_vertices[] = {
   // positions     // texture coords
@@ -43,7 +43,8 @@ static const char *help_texts[help_text_size] = {
   "Space/Enter - Toggle selection",
   "N - New board",
   "C - Check for mistakes",
-  "R - Reset board"
+  "R - Reset board",
+  "Ctrl+Q/Esc - Quit"
 };
 
 void set_scale_factor(int width, int height, float *x, float *y) {
@@ -594,19 +595,20 @@ void draw_ui_element_at(Shader shader, unsigned int vao, unsigned int vbo, Matri
 }
 
 void draw_help_overlay(Shader overlay_shader, Shader font_shader, unsigned int overlay_vao, unsigned int overlay_vbo, unsigned int font_vao, unsigned int font_vbo, Matrix4x4 projection, int window_height) {
-  float scale = 0.3f;
   int total_help_texts_height = 20;
-  int text_padding = 10;
 
-  Size size = {.width = 700, .height = 500};
+  int const text_padding = 10;
+  float const text_scale = 0.3f;
+
+  Size size = {.width = 700, .height = 550};
   Vec2 pos = {.x = 0, .y = window_height - size.height};
   Color color = { .r = 0.1f, .g = 0.1f, .b = 0.1f, .a = 0.95f };
   draw_ui_element_at(overlay_shader, overlay_vao, overlay_vbo, projection, pos, size, color);
 
   for (int i = 0; i < help_text_size; i++) {
-    Size text_size = calculate_text_size(help_texts[i], scale);
+    Size text_size = calculate_text_size(help_texts[i], text_scale);
     Vec2 text_pos = {.x = text_padding, .y = window_height - total_help_texts_height - (text_padding * 2)};
     total_help_texts_height += text_size.height + text_padding;
-    draw_text_at(font_shader, help_texts[i], text_pos, scale, font_vao, font_vbo, (float *)projection.m);
+    draw_text_at(font_shader, help_texts[i], text_pos, text_scale, font_vao, font_vbo, (float *)projection.m);
   }
 }
