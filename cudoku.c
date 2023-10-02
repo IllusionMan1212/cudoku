@@ -279,7 +279,6 @@ void reset_state(Cudoku *game) {
   game->should_draw_selection = false;
   game->should_highlight_mistakes = false;
   game->has_won = false;
-  game->should_draw_help = true;
 }
 
 bool check_win(Cudoku *game) {
