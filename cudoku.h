@@ -21,6 +21,7 @@ typedef struct Cudoku {
   Vec2 selection;
   bool should_draw_selection;
   bool should_highlight_mistakes;
+  bool should_draw_help;
 } Cudoku;
 
 typedef struct Color {
@@ -47,3 +48,5 @@ void move_selection(Cudoku *game, int x, int y);
 void toggle_selection(Cudoku *game);
 void generate_random_board(Cudoku *game);
 void reset_board(Cudoku *game);
+void toggle_help(Cudoku *game);
+void draw_help_overlay();

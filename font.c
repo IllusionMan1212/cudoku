@@ -223,3 +223,47 @@ void draw_text(Shader shader, const char *text, Size text_size, float scale, uns
   glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+void draw_text_at(Shader shader, const char *text, Vec2 pos, float scale, unsigned int vao, unsigned int vbo, float *projection) {
+  use_shader(shader);
+  set_vec3f(shader, "textColor", 200.f / 255.f, 200.f / 255.f, 200.f / 255.f);
+  set_mat4f(shader, "transform", (float *)projection);
+  glActiveTexture(GL_TEXTURE0);
+  glBindVertexArray(vao);
+
+  int c = 0;
+  while (text[c] != '\0') {
+    Character ch = characters[(int)text[c]];
+
+    float xpos = pos.x + ch.bearing.width * scale;
+    float ypos = pos.y - (ch.size.height - ch.bearing.height) * scale;
+
+    float w = (ch.size.width * scale);
+    float h = (ch.size.height * scale);
+
+    float vertices[6][4] = {
+      // top left tri
+      { xpos,     ypos + h, 0.0f, 0.0f },
+      { xpos,     ypos,     0.0f, 1.0f },
+      { xpos + w, ypos,     1.0f, 1.0f },
+
+      // bottom right tri
+      { xpos,     ypos + h, 0.0f, 0.0f },
+      { xpos + w, ypos,     1.0f, 1.0f },
+      { xpos + w, ypos + h, 1.0f, 0.0f }
+    };
+
+    glBindTexture(GL_TEXTURE_2D, ch.texture_id);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    pos.x += (ch.advance >> 6) * scale; 
+    c++;
+  }
+
+  glBindVertexArray(0);
+  glBindTexture(GL_TEXTURE_2D, 0);
+}

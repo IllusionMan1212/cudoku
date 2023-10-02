@@ -10,6 +10,9 @@
 #include "cudoku.h"
 #include "font.h"
 #include "shader.h"
+#include "helper.h"
+
+#define help_text_size 12
 
 static const float quad_vertices[] = {
   // positions     // texture coords
@@ -25,6 +28,23 @@ static const int quad_indices[] = {
 };
 
 static const Color mistake_color = {1.f, 0.f, 0.f, 0.5f};
+
+static const char *win_text = "You won!";
+
+static const char *help_texts[help_text_size] = {
+  "F1 - Toggle help",
+  "F11 - Toggle fullscreen",
+  "1-9 - Set number",
+  "0/Del/Backspace - Remove number",
+  "Left/A/H - Move selection left",
+  "Right/D/L - Move selection right",
+  "Up/W/K - Move selection up",
+  "Down/S/J - Move selection down",
+  "Space/Enter - Toggle selection",
+  "N - New board",
+  "C - Check for mistakes",
+  "R - Reset board"
+};
 
 void set_scale_factor(int width, int height, float *x, float *y) {
   if (width > height) {
@@ -155,9 +175,8 @@ void draw_win_overlay(Shader win_shader, Shader font_shader, unsigned int vao, u
 
   glBindVertexArray(0);
 
-  const char *text = "You won!";
-  Size text_size = calculate_text_size(text, 1.0f);
-  draw_text(font_shader, text, text_size, 1.5f, font_vao, font_vbo, transform);
+  Size text_size = calculate_text_size(win_text, 1.0f);
+  draw_text(font_shader, win_text, text_size, 1.5f, font_vao, font_vbo, transform);
 }
 
 void prepare_selection_box(unsigned int *vao, unsigned int *vbo) {
@@ -206,7 +225,6 @@ void draw_selection_box(Shader shader, unsigned int vao, unsigned int vbo, int x
 
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 
   glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -261,6 +279,7 @@ void reset_state(Cudoku *game) {
   game->should_draw_selection = false;
   game->should_highlight_mistakes = false;
   game->has_won = false;
+  game->should_draw_help = true;
 }
 
 bool check_win(Cudoku *game) {
@@ -274,6 +293,7 @@ bool check_win(Cudoku *game) {
   game->has_won = true;
   game->should_draw_selection = false;
   game->should_highlight_mistakes = false;
+  game->should_draw_help = false;
 
   return true;
 }
@@ -541,4 +561,53 @@ void reset_board(Cudoku *game) {
   }
 }
 
+void toggle_help(Cudoku *game) {
+  if (!game->has_won) {
+    game->should_draw_help = !game->should_draw_help;
+  }
+}
 
+void draw_ui_element_at(Shader shader, unsigned int vao, unsigned int vbo, Matrix4x4 projection, Vec2 pos, Size size, Color color) {
+  use_shader(shader);
+
+  set_mat4f(shader, "transform", (float *)projection.m);
+  set_vec4f(shader, "aColor", color.r, color.g, color.b, color.a);
+
+  glBindVertexArray(vao);
+
+  float vertices[6][2] = {
+     {pos.x,              pos.y + size.height},
+     {pos.x,              pos.y},
+     {pos.x + size.width, pos.y},
+
+     {pos.x,              pos.y + size.height},
+     {pos.x + size.width, pos.y},
+     {pos.x + size.width, pos.y + size.height},
+  };
+
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+  glDrawArrays(GL_TRIANGLES, 0, 6);
+
+  glBindVertexArray(0);
+}
+
+void draw_help_overlay(Shader overlay_shader, Shader font_shader, unsigned int overlay_vao, unsigned int overlay_vbo, unsigned int font_vao, unsigned int font_vbo, Matrix4x4 projection, int window_height) {
+  float scale = 0.3f;
+  int total_help_texts_height = 20;
+  int text_padding = 10;
+
+  Size size = {.width = 700, .height = 500};
+  Vec2 pos = {.x = 0, .y = window_height - size.height};
+  Color color = { .r = 0.1f, .g = 0.1f, .b = 0.1f, .a = 0.95f };
+  draw_ui_element_at(overlay_shader, overlay_vao, overlay_vbo, projection, pos, size, color);
+
+  for (int i = 0; i < help_text_size; i++) {
+    Size text_size = calculate_text_size(help_texts[i], scale);
+    Vec2 text_pos = {.x = text_padding, .y = window_height - total_help_texts_height - (text_padding * 2)};
+    total_help_texts_height += text_size.height + text_padding;
+    draw_text_at(font_shader, help_texts[i], text_pos, scale, font_vao, font_vbo, (float *)projection.m);
+  }
+}

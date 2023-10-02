@@ -9,6 +9,7 @@
 #include "x11.h"
 #include "cudoku.h"
 #include "font.h"
+#include "helper.h"
 
 Display *display;
 Window window;
@@ -60,8 +61,8 @@ void handle_keypress(XEvent xev, Cudoku *game) {
     toggle_check(game);
   /* } else if (XLookupKeysym(&xev.xkey, 0) == XK_m) { */
   /*   toggle_mute(&game); */
-  /* } else if (XLookupKeysym(&xev.xkey, 0) == XK_F1) { */
-  /*   toggle_help(&game); */
+  } else if (XLookupKeysym(&xev.xkey, 0) == XK_F1) {
+    toggle_help(game);
   }
 }
 
@@ -120,6 +121,7 @@ int main(int argc, char *argv[]) {
   srand(time(NULL));
 
   Cudoku game = {0};
+  game.should_draw_help = true;
   generate_random_board(&game);
 
   for (int i = 0; i < 9; i++) {
@@ -198,6 +200,8 @@ int main(int argc, char *argv[]) {
       {0, 0, 0, 1},
     };
 
+    Matrix4x4 projection = orthographicProjection2D(0.0f, width, 0.0f, height);
+
     if (!use_texture)
       draw_bg_grid_shader(grid_shader, board_vao, (float *)transform, width < height ? width : height);
     else
@@ -217,6 +221,9 @@ int main(int argc, char *argv[]) {
 
     if (game.should_highlight_mistakes)
       highlight_mistakes(selection_shader, selection_vao, selection_vbo, (float *)transform, &game);
+
+    if (game.should_draw_help)
+      draw_help_overlay(selection_shader, font_shader, selection_vao, selection_vbo, font_vao, font_vbo, projection, height);
 
     if (game.has_won) {
       draw_win_overlay(win_shader, font_shader, win_vao, font_vao, font_vbo, (float *)transform);
