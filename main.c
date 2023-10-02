@@ -22,7 +22,7 @@ void usage() {
 
 void handle_keypress(XEvent xev, Cudoku *game) {
   if (XLookupKeysym(&xev.xkey, 0) == XK_r) {
-    /* reset_board(&game); */
+    reset_board(game);
   } else if (XLookupKeysym(&xev.xkey, 0) >= XK_0 && XLookupKeysym(&xev.xkey, 0) <= XK_9) {
     set_selected_number(game, XLookupKeysym(&xev.xkey, 0) - XK_0);
   } else if (XLookupKeysym(&xev.xkey, 0) == XK_BackSpace ||
@@ -52,12 +52,12 @@ void handle_keypress(XEvent xev, Cudoku *game) {
       XLookupKeysym(&xev.xkey, 0) == XK_Return ||
       XLookupKeysym(&xev.xkey, 0) == XK_space) {
     toggle_selection(game);
-  /* } else if (XLookupKeysym(&xev.xkey, 0) == XK_n) { */
-  /*   new_board(&game); */
-  /* } else if (XLookupKeysym(&xev.xkey, 0) == XK_f) { */
-  /*   toggle_fullscreen(display, window); */
-  /* } else if (XLookupKeysym(&xev.xkey, 0) == XK_c) { */
-  /*   toggle_check(&game); */
+  } else if (XLookupKeysym(&xev.xkey, 0) == XK_n) {
+    generate_random_board(game);
+  } else if (XLookupKeysym(&xev.xkey, 0) == XK_F11) {
+    toggle_fullscreen(display, window);
+  } else if (XLookupKeysym(&xev.xkey, 0) == XK_c) {
+    toggle_check(game);
   /* } else if (XLookupKeysym(&xev.xkey, 0) == XK_m) { */
   /*   toggle_mute(&game); */
   /* } else if (XLookupKeysym(&xev.xkey, 0) == XK_F1) { */
@@ -149,6 +149,7 @@ int main(int argc, char *argv[]) {
 
   Shader selection_shader = create_shader("shaders/board_v.vert", "shaders/quad.frag");
   unsigned int selection_vao, selection_vbo;
+  Color selection_color = {0.4f, 0.4f, 1.0f, 0.5f};
   prepare_selection_box(&selection_vao, &selection_vbo);
 
   Shader win_shader = create_shader("shaders/board_v.vert", "shaders/quad.frag");
@@ -209,9 +210,13 @@ int main(int argc, char *argv[]) {
           selection_vbo,
           game.selection.x,
           game.selection.y,
-          (float *)transform);
+          (float *)transform,
+          selection_color);
 
     draw_numbers(font_shader, font_vao, font_vbo, (float *)transform, game.board);
+
+    if (game.should_highlight_mistakes)
+      highlight_mistakes(selection_shader, selection_vao, selection_vbo, (float *)transform, &game);
 
     if (game.has_won) {
       draw_win_overlay(win_shader, font_shader, win_vao, font_vao, font_vbo, (float *)transform);

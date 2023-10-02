@@ -20,7 +20,15 @@ typedef struct Cudoku {
   bool has_won;
   Vec2 selection;
   bool should_draw_selection;
+  bool should_highlight_mistakes;
 } Cudoku;
+
+typedef struct Color {
+  float r;
+  float g;
+  float b;
+  float a;
+} Color;
 
 void set_scale_factor(int width, int height, float *x, float *y);
 unsigned int prepare_bg(bool use_texture, unsigned int *texture);
@@ -30,9 +38,12 @@ void draw_numbers(Shader shader, unsigned int vao, unsigned int vbo, float *tran
 unsigned int prepare_win_overlay();
 void draw_win_overlay(Shader win_shader, Shader font_shader, unsigned int vao, unsigned int font_vao, unsigned int font_vbo, float *transform);
 void prepare_selection_box(unsigned int *vao, unsigned int *vbo);
-void draw_selection_box(Shader shader, unsigned int vao, unsigned int vbo, int x, int y, float *transform);
+void draw_selection_box(Shader shader, unsigned int vao, unsigned int vbo, int x, int y, float *transform, Color color);
+void highlight_mistakes(Shader shader, unsigned int vao, unsigned vbo, float *transform, Cudoku *game);
+void toggle_check(Cudoku *game);
 void do_selection(Cudoku *game, int x, int y, int width, int height, float x_scale, float y_scale);
 void set_selected_number(Cudoku *game, int number);
 void move_selection(Cudoku *game, int x, int y);
 void toggle_selection(Cudoku *game);
 void generate_random_board(Cudoku *game);
+void reset_board(Cudoku *game);

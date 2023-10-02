@@ -24,6 +24,8 @@ static const int quad_indices[] = {
   1, 2, 3
 };
 
+static const Color mistake_color = {1.f, 0.f, 0.f, 0.5f};
+
 void set_scale_factor(int width, int height, float *x, float *y) {
   if (width > height) {
     float ratio = (float)height / (float)width;
@@ -174,11 +176,12 @@ void prepare_selection_box(unsigned int *vao, unsigned int *vbo) {
   glBindVertexArray(0);
 }
 
-void draw_selection_box(Shader shader, unsigned int vao, unsigned int vbo, int x, int y, float *transform) {
+
+void draw_selection_box(Shader shader, unsigned int vao, unsigned int vbo, int x, int y, float *transform, Color color) {
   use_shader(shader);
 
   set_mat4f(shader, "transform", transform);
-  set_vec4f(shader, "aColor", 0.4, 0.4, 1.0, 0.5);
+  set_vec4f(shader, "aColor", color.r, color.g, color.b, color.a);
 
   glBindVertexArray(vao);
 
@@ -211,6 +214,21 @@ void draw_selection_box(Shader shader, unsigned int vao, unsigned int vbo, int x
   glBindVertexArray(0);
 }
 
+void highlight_mistakes(Shader shader, unsigned int vao, unsigned vbo, float *transform, Cudoku *game) {
+  for (int i = 0; i < 9; i++) {
+    for (int j = 0; j < 9; j++) {
+      Cell cell = game->board[i][j];
+      if (cell.value != 0 && cell.value != game->solution[i][j]) {
+        draw_selection_box(shader, vao, vbo, i, j, transform, mistake_color);
+      }
+    }
+  }
+}
+
+void toggle_check(Cudoku *game) {
+  game->should_highlight_mistakes = !game->should_highlight_mistakes;
+}
+
 void do_selection(Cudoku *game, int x, int y, int width, int height, float x_scale, float y_scale) {
   float board_x_start = (width / 2.f) - ((width * x_scale) / 2);
   float board_y_start = (height / 2.f) - ((height * y_scale) / 2);
@@ -232,6 +250,19 @@ void do_selection(Cudoku *game, int x, int y, int width, int height, float x_sca
   game->selection.y = cell_x;
 }
 
+void reset_state(Cudoku *game) {
+  for (int i = 0; i < 9; i++) {
+    for (int j = 0; j < 9; j++) {
+      game->board[i][j].value = 0;
+      game->board[i][j].is_locked = false;
+    }
+  }
+
+  game->should_draw_selection = false;
+  game->should_highlight_mistakes = false;
+  game->has_won = false;
+}
+
 bool check_win(Cudoku *game) {
   for (int i = 0; i < 9; i++) {
     for (int j = 0; j < 9; j++) {
@@ -242,6 +273,7 @@ bool check_win(Cudoku *game) {
 
   game->has_won = true;
   game->should_draw_selection = false;
+  game->should_highlight_mistakes = false;
 
   return true;
 }
@@ -464,6 +496,7 @@ void remove_numbers(Cudoku *game) {
 }
 
 void generate_random_board(Cudoku *game) {
+  reset_state(game);
   int size = 9;
   // fill diagonal boxes 1, 5, 9
   int digits[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
@@ -496,6 +529,16 @@ void generate_random_board(Cudoku *game) {
   }
 
   remove_numbers(game);
+}
+
+void reset_board(Cudoku *game) {
+  for (int i = 0; i < 9; i++) {
+    for (int j = 0; j < 9; j++) {
+      if (game->board[i][j].is_locked == false) {
+        game->board[i][j].value = 0;
+      }
+    }
+  }
 }
 
 

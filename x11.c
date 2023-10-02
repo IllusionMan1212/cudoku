@@ -1,9 +1,12 @@
+#include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <glad/glx.h>
 
 static const uint win_width = 900;
 static const uint win_height = 900;
+static bool fullscreen = False;
 
 Colormap colormap;
 GLXContext context;
@@ -113,3 +116,46 @@ void close_x11(Display **display, Window *window) {
   gladLoaderUnloadGLX();
 }
 
+void go_fullscreen(Display *display, Window window)
+{
+  XEvent xev;
+  Atom wm_state = XInternAtom(display, "_NET_WM_STATE", False);
+  Atom fullscreen = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN", False);
+  memset(&xev, 0, sizeof(xev));
+  xev.type = ClientMessage;
+  xev.xclient.window = window;
+  xev.xclient.message_type = wm_state;
+  xev.xclient.format = 32;
+  xev.xclient.data.l[0] = 1; // _NET_WM_STATE_ADD
+  xev.xclient.data.l[1] = fullscreen;
+  xev.xclient.data.l[2] = 0;
+  XSendEvent(display, DefaultRootWindow(display), False,
+    SubstructureNotifyMask | SubstructureRedirectMask, &xev);
+}
+
+void return_fullscreen(Display *display, Window window)
+{
+  XEvent xev;
+  Atom wm_state = XInternAtom(display, "_NET_WM_STATE", False);
+  Atom fullscreen = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN", False);
+  memset(&xev, 0, sizeof(xev));
+  xev.type = ClientMessage;
+  xev.xclient.window = window;
+  xev.xclient.message_type = wm_state;
+  xev.xclient.format = 32;
+  xev.xclient.data.l[0] = 0; // _NET_WM_STATE_REMOVE
+  xev.xclient.data.l[1] = fullscreen;
+  xev.xclient.data.l[2] = 0;
+  XSendEvent(display, DefaultRootWindow(display), False,
+    SubstructureNotifyMask | SubstructureRedirectMask, &xev);
+}
+
+void toggle_fullscreen(Display *display, Window window) {
+  if (fullscreen) {
+    return_fullscreen(display, window);
+  } else {
+    go_fullscreen(display, window);
+  }
+
+  fullscreen = !fullscreen;
+}
