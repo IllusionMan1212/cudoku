@@ -11,6 +11,7 @@
 #include "font.h"
 #include "shader.h"
 #include "helper.h"
+#include "audio.h"
 
 #define help_text_size 13
 
@@ -294,12 +295,15 @@ bool check_win(Cudoku *game) {
   game->should_draw_selection = false;
   game->should_highlight_mistakes = false;
   game->should_draw_help = false;
+  audio_play_win();
 
   return true;
 }
 
 void set_selected_number(Cudoku *game, int number) {
   if (game->should_draw_selection && !game->has_won && !game->board[game->selection.x][game->selection.y].is_locked) {
+    if (number != 0)
+      audio_play_scribble();
     game->board[game->selection.x][game->selection.y].value = number;
     check_win(game);
   }
@@ -599,8 +603,14 @@ void draw_help_overlay(Shader overlay_shader, Shader font_shader, unsigned int o
 
   int const text_padding = 10;
   float const text_scale = 0.3f;
+  int overlay_height = 0;
 
-  Size size = {.width = 700, .height = 550};
+  for (int i = 0; i < help_text_size; i++) {
+    Size text_size = calculate_text_size(help_texts[i], text_scale);
+    overlay_height += text_size.height + text_padding;
+  }
+
+  Size size = {.width = 700, .height = overlay_height + 20};
   Vec2 pos = {.x = 0, .y = window_height - size.height};
   Color color = { .r = 0.1f, .g = 0.1f, .b = 0.1f, .a = 0.95f };
   draw_ui_element_at(overlay_shader, overlay_vao, overlay_vbo, projection, pos, size, color);

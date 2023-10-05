@@ -1,4 +1,3 @@
-#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -10,6 +9,7 @@
 #include "cudoku.h"
 #include "font.h"
 #include "helper.h"
+#include "audio.h"
 
 Display *display;
 Window window;
@@ -67,8 +67,13 @@ void handle_keypress(XEvent xev, Cudoku *game) {
 }
 
 int main(int argc, char *argv[]) {
+  int res = audio_init();
+  if (res != 0) {
+    printf("[ERROR]: failed to initialize audio\n");
+    return 1;
+  }
+
   const char *font_path = "assets/fonts/Rubik/Rubik-VariableFont_wght.ttf";
-  /* const char *font_path = "assets/fonts/Roboto/Roboto-Bold.ttf"; */
   bool use_texture = false;
 
   // 900 is the initial width and height
@@ -106,7 +111,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  int res = init_x11(&display, &window);
+  res = init_x11(&display, &window);
   if (res < 0) return 1;
 
   res = init_fonts(font_path);
@@ -200,7 +205,7 @@ int main(int argc, char *argv[]) {
       {0, 0, 0, 1},
     };
 
-    Matrix4x4 projection = orthographicProjection2D(0.0f, width, 0.0f, height);
+    Matrix4x4 projection = orthographic_projection_2d(0.0f, width, 0.0f, height);
 
     if (!use_texture)
       draw_bg_grid_shader(grid_shader, board_vao, (float *)transform, width < height ? width : height);
@@ -230,8 +235,10 @@ int main(int argc, char *argv[]) {
     }
 
     glXSwapBuffers(display, window);
+    audio_update();
   }
 
+  audio_cleanup();
   close_x11(&display, &window);
 
   return 0;

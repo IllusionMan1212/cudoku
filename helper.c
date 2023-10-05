@@ -1,6 +1,6 @@
 #include "helper.h"
 
-Matrix4x4 orthographicProjection2D(float left, float right, float bottom, float top) {
+Matrix4x4 orthographic_projection_2d(float left, float right, float bottom, float top) {
     Matrix4x4 result;
 
     // Identity matrix

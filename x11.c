@@ -6,7 +6,7 @@
 
 static const uint win_width = 900;
 static const uint win_height = 900;
-static bool fullscreen = False;
+static bool fullscreen = false;
 
 Colormap colormap;
 GLXContext context;
