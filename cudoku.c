@@ -10,10 +10,10 @@
 #include "cudoku.h"
 #include "font.h"
 #include "shader.h"
-#include "helper.h"
 #include "audio.h"
 
-#define help_text_size 13
+#define HELP_TEXT_SIZE 13
+#define HELP_OVERLAY_WIDTH 700
 
 static const float quad_vertices[] = {
   // positions     // texture coords
@@ -32,7 +32,7 @@ static const Color mistake_color = {1.f, 0.f, 0.f, 0.5f};
 
 static const char *win_text = "You won!";
 
-static const char *help_texts[help_text_size] = {
+static const char *help_texts[HELP_TEXT_SIZE] = {
   "F1 - Toggle help",
   "F11 - Toggle fullscreen",
   "1-9 - Set number",
@@ -165,7 +165,7 @@ unsigned int prepare_win_overlay() {
   return vao;
 }
 
-void draw_win_overlay(Shader win_shader, Shader font_shader, unsigned int vao, unsigned int font_vao, unsigned int font_vbo, float *transform) {
+void draw_win_overlay(Shader win_shader, Shader font_shader, unsigned int vao, unsigned int font_vao, unsigned int font_vbo, float *transform, Cudoku *game) {
   use_shader(win_shader);
 
   set_mat4f(win_shader, "transform", transform);
@@ -177,8 +177,14 @@ void draw_win_overlay(Shader win_shader, Shader font_shader, unsigned int vao, u
 
   glBindVertexArray(0);
 
-  Size text_size = calculate_text_size(win_text, 1.0f);
-  draw_text(font_shader, win_text, text_size, 1.5f, font_vao, font_vbo, transform);
+  char time_text[64];
+  float time_elapsed = game->win_time - game->timer.time;
+  snprintf(time_text, 64, "Solved in: %02dm%02ds", (int)time_elapsed / 60, (int)time_elapsed % 60);
+
+  Size win_text_size = calculate_text_size(win_text, 1.0f);
+  Size time_text_size = calculate_text_size(time_text, 1.0f);
+  draw_text_center(font_shader, win_text, win_text_size, 1.5f, font_vao, font_vbo, transform, 0.0, 75.0);
+  draw_text_center(font_shader, time_text, time_text_size, 0.8f, font_vao, font_vbo, transform, 0.0, -75.0);
 }
 
 void prepare_selection_box(unsigned int *vao, unsigned int *vbo) {
@@ -250,6 +256,8 @@ void toggle_check(Cudoku *game) {
 }
 
 void do_selection(Cudoku *game, int x, int y, int width, int height, float x_scale, float y_scale) {
+  if (game->has_won) return;
+
   float board_x_start = (width / 2.f) - ((width * x_scale) / 2);
   float board_y_start = (height / 2.f) - ((height * y_scale) / 2);
 
@@ -295,6 +303,9 @@ bool check_win(Cudoku *game) {
   game->should_draw_selection = false;
   game->should_highlight_mistakes = false;
   game->should_draw_help = false;
+  game->win_time = get_time();
+  timer_stop(&game->timer);
+
   audio_play_win();
 
   return true;
@@ -553,9 +564,13 @@ void generate_random_board(Cudoku *game) {
   }
 
   remove_numbers(game);
+
+  timer_reset(&game->timer);
 }
 
 void reset_board(Cudoku *game) {
+  if (game->has_won) return;
+
   for (int i = 0; i < 9; i++) {
     for (int j = 0; j < 9; j++) {
       if (game->board[i][j].is_locked == false) {
@@ -563,18 +578,23 @@ void reset_board(Cudoku *game) {
       }
     }
   }
+
+  timer_reset(&game->timer);
 }
 
-void toggle_help(Cudoku *game) {
+bool toggle_help(Cudoku *game) {
   if (!game->has_won) {
     game->should_draw_help = !game->should_draw_help;
+    return game->should_draw_help;
   }
+
+  return false;
 }
 
-void draw_ui_element_at(Shader shader, unsigned int vao, unsigned int vbo, Matrix4x4 projection, Vec2 pos, Size size, Color color) {
+void draw_ui_element_at(Shader shader, unsigned int vao, unsigned int vbo, Matrix4x4 *projection, Vec2 pos, Size size, Color color) {
   use_shader(shader);
 
-  set_mat4f(shader, "transform", (float *)projection.m);
+  set_mat4f(shader, "transform", (float *)projection->m);
   set_vec4f(shader, "aColor", color.r, color.g, color.b, color.a);
 
   glBindVertexArray(vao);
@@ -598,27 +618,80 @@ void draw_ui_element_at(Shader shader, unsigned int vao, unsigned int vbo, Matri
   glBindVertexArray(0);
 }
 
-void draw_help_overlay(Shader overlay_shader, Shader font_shader, unsigned int overlay_vao, unsigned int overlay_vbo, unsigned int font_vao, unsigned int font_vbo, Matrix4x4 projection, int window_height) {
+void draw_help_overlay(Shader overlay_shader, Shader font_shader, unsigned int overlay_vao, unsigned int overlay_vbo, unsigned int font_vao, unsigned int font_vbo, Matrix4x4 *projection, int window_height, Timer *timer) {
   int total_help_texts_height = 20;
 
   int const text_padding = 10;
   float const text_scale = 0.3f;
   int overlay_height = 0;
 
-  for (int i = 0; i < help_text_size; i++) {
+  for (int i = 0; i < HELP_TEXT_SIZE; i++) {
     Size text_size = calculate_text_size(help_texts[i], text_scale);
     overlay_height += text_size.height + text_padding;
   }
-
-  Size size = {.width = 700, .height = overlay_height + 20};
-  Vec2 pos = {.x = 0, .y = window_height - size.height};
-  Color color = { .r = 0.1f, .g = 0.1f, .b = 0.1f, .a = 0.95f };
+Size size = {.width = HELP_OVERLAY_WIDTH, .height = overlay_height + 20};
+  Vec2 pos = {
+    .x = 0,
+    .y = window_height - size.height
+  };
+  Color color = {
+    .r = 0.1f,
+    .g = 0.1f,
+    .b = 0.1f,
+    .a = 0.95f
+  };
   draw_ui_element_at(overlay_shader, overlay_vao, overlay_vbo, projection, pos, size, color);
 
-  for (int i = 0; i < help_text_size; i++) {
+  for (int i = 0; i < HELP_TEXT_SIZE; i++) {
     Size text_size = calculate_text_size(help_texts[i], text_scale);
-    Vec2 text_pos = {.x = text_padding, .y = window_height - total_help_texts_height - (text_padding * 2)};
+    Vec2 text_pos = {
+      .x = text_padding,
+      .y = window_height - total_help_texts_height - (text_padding * 2)
+    };
     total_help_texts_height += text_size.height + text_padding;
-    draw_text_at(font_shader, help_texts[i], text_pos, text_scale, font_vao, font_vbo, (float *)projection.m);
+    draw_text_at(font_shader, help_texts[i], text_pos, text_scale, font_vao, font_vbo, (float *)projection->m, NULL);
   }
+
+  if (timer->is_running) {
+    char closing_in_text[128];
+    snprintf(closing_in_text, sizeof(closing_in_text), "Hiding in %ds", (int)timer_remaining(timer) + 1);
+    Size closing_in_text_size = calculate_text_size(closing_in_text, text_scale / 2.0);
+    Vec2 closing_in_text_pos = {
+      .x = HELP_OVERLAY_WIDTH - closing_in_text_size.width,
+      .y = window_height - closing_in_text_size.height - text_padding,
+    };
+    Color closing_in_text_color = {
+      .r = 255.0f,
+      .g = 150.0f,
+      .b = 0.0f,
+      .a = 1.0f,
+    };
+    draw_text_at(font_shader, closing_in_text, closing_in_text_pos, text_scale / 2.0, font_vao, font_vbo, (float *)projection->m, &closing_in_text_color);
+  }
+}
+
+void draw_timer(Shader shader, unsigned int vao, unsigned int vbo, float *projection, Timer *timer, int win_width) {
+  if (!timer->is_running) return;
+
+  char timer_text[64];
+
+  float elapsed = timer_elapsed(timer);
+  int minutes = elapsed / 60;
+  int seconds = (int)elapsed % 60;
+
+  snprintf(timer_text, sizeof(timer_text), "Time: %02d:%02d", minutes, seconds);
+  float text_scale = 0.35f;
+  Size text_size = calculate_text_size(timer_text, text_scale);
+  Vec2 text_pos = {
+    .x = win_width - text_size.width - 10,
+    .y = 10,
+  };
+  Color text_color = {
+    .r = 66.0f,
+    .g = 92.0f,
+    .b = 124.0f,
+    .a = 1.0f,
+  };
+
+  draw_text_at(shader, timer_text, text_pos, text_scale, vao, vbo, projection, &text_color);
 }

@@ -96,6 +96,7 @@ int init_x11(Display **display, Window *window) {
   XWindowAttributes win_attrs;
   XGetWindowAttributes(*display, *window, &win_attrs);
 
+  glad_glXSwapIntervalEXT(*display, *window, 1);
   // we enable blending for text
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

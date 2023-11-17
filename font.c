@@ -177,7 +177,7 @@ void draw_number(Shader shader, Cell cell, int row, int column, float scale, uns
   glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void draw_text(Shader shader, const char *text, Size text_size, float scale, unsigned int vao, unsigned int vbo, float *transform) {
+void draw_text_center(Shader shader, const char *text, Size text_size, float scale, unsigned int vao, unsigned int vbo, float *transform, float offset_x, float offset_y) {
   use_shader(shader);
   set_vec3f(shader, "textColor", 200.f / 255.f, 200.f / 255.f, 200.f / 255.f);
   set_mat4f(shader, "transform", transform);
@@ -189,8 +189,8 @@ void draw_text(Shader shader, const char *text, Size text_size, float scale, uns
   while (text[c] != '\0') {
     Character ch = characters[(int)text[c]];
 
-    float xpos = ((x + ch.bearing.width * scale) / 900.f) - ((text_size.width / 2.f) * scale / 900.f);
-    float ypos = (((ch.bearing.height - ch.size.height) * scale) / 900.f) - ((text_size.height / 2.f) * scale / 900.f);
+    float xpos = ((x + ch.bearing.width * scale + offset_x) / 900.f) - ((text_size.width / 2.f) * scale / 900.f);
+    float ypos = (((ch.bearing.height - ch.size.height + offset_y) * scale) / 900.f) - ((text_size.height / 2.f) * scale / 900.f);
 
     float w = (ch.size.width * scale / 900.f);
     float h = (ch.size.height * scale / 900.f);
@@ -223,9 +223,15 @@ void draw_text(Shader shader, const char *text, Size text_size, float scale, uns
   glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void draw_text_at(Shader shader, const char *text, Vec2 pos, float scale, unsigned int vao, unsigned int vbo, float *projection) {
+Color default_text_color = { 200.f / 255.f, 200.f / 255.f, 200.f / 255.f, 1.f };
+
+void draw_text_at(Shader shader, const char *text, Vec2 pos, float scale, unsigned int vao, unsigned int vbo, float *projection, Color *color) {
   use_shader(shader);
-  set_vec3f(shader, "textColor", 200.f / 255.f, 200.f / 255.f, 200.f / 255.f);
+  if (color != NULL) {
+    set_vec3f(shader, "textColor", color->r / 255.f, color->g / 255.f, color->b / 255.f);
+  } else {
+    set_vec3f(shader, "textColor", 200.f / 255.f, 200.f / 255.f, 200.f / 255.f);
+  }
   set_mat4f(shader, "transform", (float *)projection);
   glActiveTexture(GL_TEXTURE0);
   glBindVertexArray(vao);

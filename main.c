@@ -8,7 +8,6 @@
 #include "x11.h"
 #include "cudoku.h"
 #include "font.h"
-#include "helper.h"
 #include "audio.h"
 
 Display *display;
@@ -24,6 +23,20 @@ void usage() {
 void handle_keypress(XEvent xev, Cudoku *game) {
   if (XLookupKeysym(&xev.xkey, 0) == XK_r) {
     reset_board(game);
+  } else if (
+      xev.xkey.state & ControlMask &&
+      xev.xkey.state & Mod1Mask &&
+      XLookupKeysym(&xev.xkey, 0) == XK_w) {
+    printf("DEBUG: Ctrl + Shift + W pressed. Winning game\n");
+
+    game->has_won = true;
+    game->should_draw_selection = false;
+    game->should_highlight_mistakes = false;
+    game->should_draw_help = false;
+    game->win_time = get_time();
+    timer_stop(&game->timer);
+
+    audio_play_win();
   } else if (XLookupKeysym(&xev.xkey, 0) >= XK_0 && XLookupKeysym(&xev.xkey, 0) <= XK_9) {
     set_selected_number(game, XLookupKeysym(&xev.xkey, 0) - XK_0);
   } else if (XLookupKeysym(&xev.xkey, 0) == XK_BackSpace ||
@@ -62,7 +75,9 @@ void handle_keypress(XEvent xev, Cudoku *game) {
   /* } else if (XLookupKeysym(&xev.xkey, 0) == XK_m) { */
   /*   toggle_mute(&game); */
   } else if (XLookupKeysym(&xev.xkey, 0) == XK_F1) {
-    toggle_help(game);
+    if (!toggle_help(game)) {
+      timer_stop(&game->help_timer);
+    }
   }
 }
 
@@ -129,18 +144,6 @@ int main(int argc, char *argv[]) {
   game.should_draw_help = true;
   generate_random_board(&game);
 
-  for (int i = 0; i < 9; i++) {
-    for (int j = 0; j < 9; j++) {
-      if (game.board[i][j].value) {
-        printf("%d | ", game.board[i][j].value);
-      } else {
-        printf("  | ");
-      }
-    }
-    printf("\n");
-  }
-  printf("\n");
-
   unsigned int font_vao, font_vbo;
   prepare_font(&font_vao, &font_vbo);
   Shader font_shader = create_shader("shaders/font_v.vert", "shaders/font_f.frag");
@@ -162,8 +165,17 @@ int main(int argc, char *argv[]) {
   Shader win_shader = create_shader("shaders/board_v.vert", "shaders/quad.frag");
   unsigned int win_vao = prepare_win_overlay();
 
+  float delta_t, last_t = 0.0;
+  start_internal_timer();
+  timer_start(&game.help_timer, 5.0f);
+  timer_start(&game.timer, 0.0f);
+
   bool quit = false;
   while (!quit) {
+    float now = get_time();
+    delta_t = now - last_t;
+    last_t = now;
+
     while (XPending(display)) {
       XEvent xev;
       XNextEvent(display, &xev);
@@ -195,6 +207,10 @@ int main(int argc, char *argv[]) {
       }
     }
 
+    /* printf("clock: %f\n", get_time()); */
+    /* printf("delta: %f\n", delta_t); */
+    /* printf("FPS: %f\n", 1.0 / delta_t); */
+
     glClearColor(0.2, 0.2, 0.2, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -224,14 +240,29 @@ int main(int argc, char *argv[]) {
 
     draw_numbers(font_shader, font_vao, font_vbo, (float *)transform, game.board);
 
-    if (game.should_highlight_mistakes)
+    if (game.should_highlight_mistakes) {
       highlight_mistakes(selection_shader, selection_vao, selection_vbo, (float *)transform, &game);
 
+      char* text = "Mistake highlighter is ON";
+      float text_scale = 0.2;
+      Size text_size = calculate_text_size(text, text_scale);
+      Vec2 text_pos = { 0.0f, text_size.height - 10.f };
+      Color text_color = { 200.0f, 50.0f, 50.0f, 1.0f };
+      draw_text_at(font_shader, text, text_pos, text_scale, font_vao, font_vbo, (float *)projection.m, &text_color);
+    }
+
+    draw_timer(font_shader, font_vao, font_vbo, (float *)projection.m, &game.timer, width);
+
+    if (timer_ended(&game.help_timer)) {
+      timer_stop(&game.help_timer);
+      game.should_draw_help = false;
+    }
+
     if (game.should_draw_help)
-      draw_help_overlay(selection_shader, font_shader, selection_vao, selection_vbo, font_vao, font_vbo, projection, height);
+      draw_help_overlay(selection_shader, font_shader, selection_vao, selection_vbo, font_vao, font_vbo, &projection, height, &game.help_timer);
 
     if (game.has_won) {
-      draw_win_overlay(win_shader, font_shader, win_vao, font_vao, font_vbo, (float *)transform);
+      draw_win_overlay(win_shader, font_shader, win_vao, font_vao, font_vbo, (float *)transform, &game);
     }
 
     glXSwapBuffers(display, window);

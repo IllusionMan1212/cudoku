@@ -1,3 +1,4 @@
+#pragma once
 
 typedef struct {
     float m[4][4];
