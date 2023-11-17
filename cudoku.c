@@ -289,6 +289,7 @@ void reset_state(Cudoku *game) {
   game->should_draw_selection = false;
   game->should_highlight_mistakes = false;
   game->has_won = false;
+  timer_reset(&game->timer);
 }
 
 bool check_win(Cudoku *game) {
@@ -564,8 +565,6 @@ void generate_random_board(Cudoku *game) {
   }
 
   remove_numbers(game);
-
-  timer_reset(&game->timer);
 }
 
 void reset_board(Cudoku *game) {

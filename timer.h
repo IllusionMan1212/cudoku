@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <sys/time.h>
+
 extern struct timeval start_time;
 
 typedef struct Timer {
@@ -10,7 +11,6 @@ typedef struct Timer {
   float duration;
   bool is_running;
 } Timer;
-
 
 double get_time();
 void start_internal_timer();

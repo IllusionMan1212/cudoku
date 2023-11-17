@@ -35,7 +35,6 @@ float timer_remaining(Timer *timer) {
 }
 
 void timer_stop(Timer *timer) {
-  timer->time = 0.0f;
   timer->is_running = false;
 }
 
