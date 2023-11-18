@@ -10,6 +10,8 @@
 #include "font.h"
 #include "audio.h"
 
+#define DEBUG 1
+
 Display *display;
 Window window;
 
@@ -27,6 +29,7 @@ void handle_keypress(XEvent xev, Cudoku *game) {
       xev.xkey.state & ControlMask &&
       xev.xkey.state & Mod1Mask &&
       XLookupKeysym(&xev.xkey, 0) == XK_w) {
+#if DEBUG
     printf("DEBUG: Ctrl + Shift + W pressed. Winning game\n");
 
     game->has_won = true;
@@ -37,6 +40,7 @@ void handle_keypress(XEvent xev, Cudoku *game) {
     timer_stop(&game->timer);
 
     audio_play_win();
+#endif
   } else if (XLookupKeysym(&xev.xkey, 0) >= XK_0 && XLookupKeysym(&xev.xkey, 0) <= XK_9) {
     set_selected_number(game, XLookupKeysym(&xev.xkey, 0) - XK_0);
   } else if (XLookupKeysym(&xev.xkey, 0) == XK_BackSpace ||
@@ -206,10 +210,6 @@ int main(int argc, char *argv[]) {
         }
       }
     }
-
-    /* printf("clock: %f\n", get_time()); */
-    /* printf("delta: %f\n", delta_t); */
-    /* printf("FPS: %f\n", 1.0 / delta_t); */
 
     glClearColor(0.2, 0.2, 0.2, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);

@@ -6,7 +6,6 @@
 #include "font.h"
 #include "shader.h"
 
-Character numbers[9];
 Character characters[128];
 
 int init_fonts(const char *font_path) {
@@ -34,31 +33,6 @@ int init_fonts(const char *font_path) {
 
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-  for (int i = 0; i < 9; i++) {
-    if (FT_Load_Char(face, '0' + (i + 1), FT_LOAD_RENDER)) {
-      printf("[ERROR]: failed to load glyph for number '%c'\n", '0' + i);
-    }
-
-    unsigned int texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, face->glyph->bitmap.width,
-        face->glyph->bitmap.rows, 0, GL_RED, GL_UNSIGNED_BYTE,
-        face->glyph->bitmap.buffer);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    numbers[i].texture_id = texture;
-    numbers[i].advance = face->glyph->advance.x;
-    Size s = { .width = face->glyph->bitmap.width, .height = face->glyph->bitmap.rows };
-    numbers[i].size = s;
-    Size bearing = { .width = face->glyph->bitmap_left, .height = face->glyph->bitmap_top };
-    numbers[i].bearing = bearing;
-  }
-
   for (int c = 0; c < 128; c++) {
     if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
       printf("[ERROR]: failed to load glyph for char '%c'\n", c);
@@ -78,10 +52,8 @@ int init_fonts(const char *font_path) {
 
     characters[c].texture_id = texture;
     characters[c].advance = face->glyph->advance.x;
-    Size s = { .width = face->glyph->bitmap.width, .height = face->glyph->bitmap.rows };
-    characters[c].size = s;
-    Size bearing = { .width = face->glyph->bitmap_left, .height = face->glyph->bitmap_top };
-    characters[c].bearing = bearing;
+    characters[c].size = (Size){ .width = face->glyph->bitmap.width, .height = face->glyph->bitmap.rows };
+    characters[c].bearing = (Size){ .width = face->glyph->bitmap_left, .height = face->glyph->bitmap_top };
   }
 
   glBindTexture(GL_TEXTURE_2D, 0);
@@ -135,7 +107,8 @@ void draw_number(Shader shader, Cell cell, int row, int column, float scale, uns
   glActiveTexture(GL_TEXTURE0);
   glBindVertexArray(vao);
 
-  Character ch = numbers[cell.value - 1];
+  // get ascii value of cell value and use it to index into characters
+  Character ch = characters['0' + cell.value];
 
   float w = ch.size.width;
   float h = ch.size.height;
