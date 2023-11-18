@@ -13,7 +13,6 @@
 #include "audio.h"
 
 #define HELP_TEXT_SIZE 13
-#define HELP_OVERLAY_WIDTH 700
 
 static const float quad_vertices[] = {
   // positions     // texture coords
@@ -623,12 +622,14 @@ void draw_help_overlay(Shader overlay_shader, Shader font_shader, unsigned int o
   int const text_padding = 10;
   float const text_scale = 0.3f;
   int overlay_height = 0;
+  int overlay_width = 0;
 
   for (int i = 0; i < HELP_TEXT_SIZE; i++) {
     Size text_size = calculate_text_size(help_texts[i], text_scale);
     overlay_height += text_size.height + text_padding;
+    overlay_width = max(overlay_width, text_size.width + text_padding * 2);
   }
-Size size = {.width = HELP_OVERLAY_WIDTH, .height = overlay_height + 20};
+  Size size = {.width = overlay_width, .height = overlay_height + text_padding * 2};
   Vec2 pos = {
     .x = 0,
     .y = window_height - size.height
@@ -656,7 +657,7 @@ Size size = {.width = HELP_OVERLAY_WIDTH, .height = overlay_height + 20};
     snprintf(closing_in_text, sizeof(closing_in_text), "Hiding in %ds", (int)timer_remaining(timer) + 1);
     Size closing_in_text_size = calculate_text_size(closing_in_text, text_scale / 2.0);
     Vec2 closing_in_text_pos = {
-      .x = HELP_OVERLAY_WIDTH - closing_in_text_size.width,
+      .x = overlay_width - closing_in_text_size.width,
       .y = window_height - closing_in_text_size.height - text_padding,
     };
     Color closing_in_text_color = {
