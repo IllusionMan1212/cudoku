@@ -27,3 +27,17 @@ Matrix4x4 orthographic_projection_2d(float left, float right, float bottom, floa
 int max(int a, int b) {
     return a > b ? a : b;
 }
+
+float maxf(float a, float b) {
+    return a > b ? a : b;
+}
+
+float clampf(float value, float min, float max) {
+    if (value < min) {
+        return min;
+    } else if (value > max) {
+        return max;
+    }
+
+    return value;
+}

@@ -3,17 +3,6 @@
 #include "cudoku.h"
 #include "shader.h"
 
-typedef struct Size {
-  int width;
-  int height;
-} Size;
-
-typedef struct Character {
-  unsigned int texture_id;
-  Size size;
-  Size bearing;
-  unsigned int advance;
-} Character;
 
 int init_fonts(const char *font_path);
 void prepare_font(unsigned int *vao, unsigned int *vbo);

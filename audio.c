@@ -59,7 +59,7 @@ void audio_play_win() {
   };
 }
 
-void audio_cleanup() {
+void audio_close() {
   FMOD_Sound_Release(win_sound);
   FMOD_Sound_Release(scribble_sound);
   FMOD_ChannelGroup_Release(sfx_channel_group);
