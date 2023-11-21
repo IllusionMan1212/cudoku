@@ -16,7 +16,7 @@ double get_time();
 void start_internal_timer();
 bool timer_ended(Timer *timer);
 void timer_start(Timer *timer, float duration);
+void timer_stop(Timer *timer);
 void timer_reset(Timer *timer);
 float timer_remaining(Timer *timer);
-void timer_stop(Timer *timer);
 float timer_elapsed(Timer *timer);

@@ -25,6 +25,10 @@ void timer_start(Timer *timer, float duration) {
   timer->is_running = true;
 }
 
+void timer_stop(Timer *timer) {
+  timer->is_running = false;
+}
+
 void timer_reset(Timer *timer) {
   timer->time = get_time();
   timer->is_running = true;
@@ -32,10 +36,6 @@ void timer_reset(Timer *timer) {
 
 float timer_remaining(Timer *timer) {
   return timer->duration - (get_time() - timer->time);
-}
-
-void timer_stop(Timer *timer) {
-  timer->is_running = false;
 }
 
 float timer_elapsed(Timer *timer) {

@@ -5,11 +5,7 @@
 #include "helper.h"
 #include "shader.h"
 #include "timer.h"
-
-typedef struct Vec2 {
-  int x;
-  int y;
-} Vec2;
+#include "ui.h"
 
 typedef struct Cell {
   int value;
@@ -28,13 +24,6 @@ typedef struct Cudoku {
   Timer timer;
   float win_time;
 } Cudoku;
-
-typedef struct Color {
-  float r;
-  float g;
-  float b;
-  float a;
-} Color;
 
 void set_scale_factor(int width, int height, float *x, float *y);
 unsigned int prepare_bg(bool use_texture, unsigned int *texture);
@@ -66,3 +55,4 @@ void draw_help_overlay(
     Timer *timer
 );
 void draw_timer(Shader shader, unsigned int vao, unsigned int vbo, float *projection, Timer *timer, int win_width);
+void draw_win();

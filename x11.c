@@ -4,12 +4,10 @@
 
 #include <glad/glx.h>
 
-static const uint win_width = 900;
-static const uint win_height = 900;
 static bool fullscreen = false;
 
 Colormap colormap;
-GLXContext context;
+GLXContext glx_context;
 
 void resize_x11_window(Display *display, Window window) {
   XWindowAttributes win_attrs;
@@ -17,7 +15,7 @@ void resize_x11_window(Display *display, Window window) {
   glViewport(0, 0, win_attrs.width, win_attrs.height);
 }
 
-int init_x11(Display **display, Window *window) {
+int init_x11(Display **display, Window *window, const char* title, int window_width, int window_height) {
   *display = XOpenDisplay(NULL);
 
   if (display == NULL) {
@@ -36,12 +34,12 @@ int init_x11(Display **display, Window *window) {
     StructureNotifyMask | ButtonPressMask;
   attributes.colormap = colormap;
 
-  *window = XCreateWindow(*display, root, 0, 0, win_width, win_height, 0,
+  *window = XCreateWindow(*display, root, 0, 0, window_width, window_height, 0,
       DefaultDepth(*display, screen), InputOutput, visual,
       CWColormap | CWEventMask, &attributes);
 
   XMapWindow(*display, *window);
-  XStoreName(*display, *window, "Cudoku");
+  XStoreName(*display, *window, title);
 
   if (!window) {
     printf("Failed to create window\n");
@@ -74,15 +72,15 @@ int init_x11(Display **display, Window *window) {
     None
   };
 
-  context = glXCreateContextAttribsARB(*display, fbc[0], NULL, 1,
+  glx_context = glXCreateContextAttribsARB(*display, fbc[0], NULL, 1,
       context_attributes);
 
-  if (!context) {
+  if (!glx_context) {
     printf("Failed to create GLX context\n");
     return 1;
   }
 
-  glXMakeCurrent(*display, *window, context);
+  glXMakeCurrent(*display, *window, glx_context);
 
   int gl_version = gladLoaderLoadGL();
 
@@ -108,7 +106,7 @@ int init_x11(Display **display, Window *window) {
 
 void close_x11(Display **display, Window *window) {
   glXMakeCurrent(*display, 0, 0);
-  glXDestroyContext(*display, context);
+  glXDestroyContext(*display, glx_context);
 
   XDestroyWindow(*display, *window);
   XFreeColormap(*display, colormap);
