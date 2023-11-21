@@ -1,0 +1,4 @@
+- draw functions for other primitive shapes (circle, triangle?)
+- border decorations for shapes
+- look into SDF/vector text
+- unicode support?

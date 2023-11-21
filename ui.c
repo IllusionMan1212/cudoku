@@ -96,9 +96,8 @@ int init_ui(const char* font_path, Size window_size) {
     return 1;
   }
 
-  font_shader = create_shader("shaders/font.vert", "shaders/font.frag");
+  font_shader = create_shader("shaders/ui.vert", "shaders/font.frag");
   ui_shader = create_shader("shaders/ui.vert", "shaders/ui.frag");
-
 
   glGenVertexArrays(1, &font_vao);
   glGenVertexArrays(1, &ui_vao);
@@ -359,7 +358,7 @@ void apply_alignment(Alignment align, Vec2f *pos, Sizef size) {
   }
 }
 
-void draw_quad(UIConstraints constraints, Color *color, Alignment align) {
+void draw_quad(UIConstraints constraints, Color *color, float border_radius, Alignment align) {
   use_shader(ui_shader);
 
   if (color) {
@@ -368,7 +367,14 @@ void draw_quad(UIConstraints constraints, Color *color, Alignment align) {
     set_vec4f(ui_shader, "aColor", 0.f, 0.f, 0.f, 1.f);
   }
 
+  printf("width: %f, height: %f\n", constraints.width, constraints.height);
+  set_float(ui_shader, "uiWidth", constraints.width);
+  set_float(ui_shader, "uiHeight", constraints.height);
+  set_float(ui_shader, "borderRadius", border_radius);
   set_mat4f(ui_shader, "projection", (float *)zephr_context.projection.m);
+  Matrix4x4 model = identity();
+
+  set_mat4f(font_shader, "model", (float *)model.m);
 
   glBindVertexArray(ui_vao);
 
@@ -379,13 +385,15 @@ void draw_quad(UIConstraints constraints, Color *color, Alignment align) {
   apply_alignment(align, &pos, size);
 
   float vertices[6][4] = {
-     {pos.x,              pos.y + size.height, 0.0, 1.0},
-     {pos.x,              pos.y, 0.0, 0.0},
-     {pos.x + size.width, pos.y, 1.0, 0.0},
+    // bottom left tri
+    {pos.x,              pos.y + size.height, 0.0, 1.0},
+    {pos.x,              pos.y,               0.0, 0.0},
+    {pos.x + size.width, pos.y,               1.0, 0.0},
 
-     {pos.x,              pos.y + size.height, 0.0, 1.0},
-     {pos.x + size.width, pos.y, 1.0, 0.0},
-     {pos.x + size.width, pos.y + size.height, 1.0, 1.0},
+    // top right tri
+    {pos.x,              pos.y + size.height, 0.0, 1.0},
+    {pos.x + size.width, pos.y,               1.0, 0.0},
+    {pos.x + size.width, pos.y + size.height, 1.0, 1.0},
   };
 
   glBindBuffer(GL_ARRAY_BUFFER, ui_vbo);
@@ -443,12 +451,12 @@ void draw_text(const char* text, int font_size, Vec2f pos, Color *color, Alignme
     apply_alignment(alignment, &final_pos, (Sizef){ text_size.width * font_scale, text_size.height * font_scale });
 
     float vertices[6][4] = {
-      // top left tri
+      // bottom left tri
       {final_pos.x,     final_pos.y + h, 0.0, 1.0},
       {final_pos.x,     final_pos.y,     0.0, 0.0},
       {final_pos.x + w, final_pos.y,     1.0, 0.0},
 
-      // bottom right tri
+      // top right tri
       {final_pos.x,     final_pos.y + h, 0.0, 1.0},
       {final_pos.x + w, final_pos.y,     1.0, 0.0},
       {final_pos.x + w, final_pos.y + h, 1.0, 1.0},
