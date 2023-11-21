@@ -59,9 +59,9 @@ void draw_win() {
   /* set_height_constraint(&constraints, window.height, UI_CONSTRAINT_FIXED); */
 
   Alignment align = ALIGN_TOP_RIGHT;
-  float scale = 1.0f;
+  int font_size = 72.0f;
 
-  Sizef text_size = calculate_text_size(win_text, scale);
+  Sizef text_size = calculate_text_size(win_text, font_size);
 
   set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
   set_y_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
@@ -70,7 +70,7 @@ void draw_win() {
 
   draw_quad(constraints, &bg_color, align);
 
-  draw_text(win_text, scale, (Vec2f){0.0, 0.0}, &text_color, align);
+  draw_text(win_text, font_size, (Vec2f){0.0, 0.0}, &text_color, align);
 }
 
 void set_scale_factor(int width, int height, float *x, float *y) {

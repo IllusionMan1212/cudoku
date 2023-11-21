@@ -212,7 +212,8 @@ Size zephr_get_window_size() {
   return zephr_context.window_size;
 }
 
-Sizef calculate_text_size(const char *text, float scale) {
+Sizef calculate_text_size(const char *text, int font_size) {
+  float scale = (float)font_size / 128.f;
   Sizef size = { .width = 0, .height = 0 };
   int w = 0;
   int h = 0;
@@ -396,8 +397,7 @@ void draw_quad(UIConstraints constraints, Color *color, Alignment align) {
   glBindVertexArray(0);
 }
 
-// TODO: remove scaling and replace it with standardized font sizes with 16.0f being the default
-void draw_text(const char* text, float scale, Vec2f pos, Color *color, Alignment alignment) {
+void draw_text(const char* text, int font_size, Vec2f pos, Color *color, Alignment alignment) {
   use_shader(font_shader);
   if (color) {
     set_vec4f(font_shader, "textColor", color->r / 255.f, color->g / 255.f, color->b / 255.f, color->a / 255.f);
@@ -414,7 +414,8 @@ void draw_text(const char* text, float scale, Vec2f pos, Color *color, Alignment
   glActiveTexture(GL_TEXTURE0);
   glBindVertexArray(font_vao);
 
-  Sizef text_size = calculate_text_size(text, 1.0);
+  Sizef text_size = calculate_text_size(text, 128.0);
+  float font_scale = (float)font_size / 128.f;
 
   int max_bearing_h = 0;
   for (uint i = 0; i < strlen(text); i++) {
@@ -431,15 +432,15 @@ void draw_text(const char* text, float scale, Vec2f pos, Color *color, Alignment
 
     // subtract the bearing width of the first character to remove the extra space
     // at the start of the text and move every char to the left by that width
-    float xpos = (x + (ch.bearing.width - first_char_bearing_w)) * scale;
+    float xpos = (x + (ch.bearing.width - first_char_bearing_w)) * font_scale;
 
-    float ypos = (text_size.height - ch.bearing.height - (text_size.height - max_bearing_h)) * scale;
+    float ypos = (text_size.height - ch.bearing.height - (text_size.height - max_bearing_h)) * font_scale;
     Vec2f final_pos = { xpos, ypos };
 
-    float w = (ch.size.width * scale);
-    float h = (ch.size.height * scale);
+    float w = (ch.size.width * font_scale);
+    float h = (ch.size.height * font_scale);
 
-    apply_alignment(alignment, &final_pos, (Sizef){ text_size.width * scale, text_size.height * scale });
+    apply_alignment(alignment, &final_pos, (Sizef){ text_size.width * font_scale, text_size.height * font_scale });
 
     float vertices[6][4] = {
       // top left tri
