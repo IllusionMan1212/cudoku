@@ -2,34 +2,7 @@
 
 #include <stdbool.h>
 
-#include "helper.h"
-
-typedef struct Size {
-  int width;
-  int height;
-} Size;
-
-typedef struct Sizef {
-  float width;
-  float height;
-} Sizef;
-
-typedef struct Vec2 {
-  int x;
-  int y;
-} Vec2;
-
-typedef struct Vec2f {
-  float x;
-  float y;
-} Vec2f;
-
-typedef struct Color {
-  float r;
-  float g;
-  float b;
-  float a;
-} Color;
+#include "z_math.h"
 
 typedef struct Character {
   unsigned int texture_id;
@@ -70,6 +43,7 @@ typedef struct UIConstraints {
   float y;
   float width;
   float height;
+  float rotation;
 } UIConstraints;
 
 int init_zephr(const char* font_path, const char* window_title, Size window_size, Color *clear_color);
@@ -81,8 +55,9 @@ void set_x_constraint(UIConstraints *constraints, float value, UIConstraint type
 void set_y_constraint(UIConstraints *constraints, float value, UIConstraint type);
 void set_width_constraint(UIConstraints *constraints, float value, UIConstraint type);
 void set_height_constraint(UIConstraints *constraints, float value, UIConstraint type);
+void set_rotation_constraint(UIConstraints *constraints, float angle_d);
 void draw_quad(UIConstraints constraints, Color *color, float border_radius, Alignment align);
 void draw_circle(UIConstraints constraints, Color *color, Alignment align);
 void draw_triangle(UIConstraints constraints, Color *color, Alignment align);
-void draw_text(const char* text, int font_size, Vec2f pos, Color *color, Alignment align);
+void draw_text(const char* text, int font_size, UIConstraints constraints, Color *color, Alignment align);
 Sizef calculate_text_size(const char *text, int font_size);

@@ -314,6 +314,10 @@ void set_height_constraint(UIConstraints *constraints, float value, UIConstraint
   }
 }
 
+void set_rotation_constraint(UIConstraints *constraints, float angle_d) {
+  constraints->rotation = angle_d;
+}
+
 void apply_constraints(UIConstraints constraints, Vec2f *pos, Sizef *size) {
   *pos = (Vec2f){constraints.x, constraints.y};
   *size = (Sizef){constraints.width, constraints.height};
@@ -381,9 +385,11 @@ void draw_quad(UIConstraints constraints, Color *color, float border_radius, Ali
   apply_alignment(align, &pos, size);
 
   Matrix4x4 model = identity();
-  apply_rotation(&model, to_radians(0));
-  model.m[3][0] = pos.x;
-  model.m[3][1] = pos.y;
+  apply_translation(&model, (Vec2f){-size.width / 2.f, -size.height / 2.f});
+  apply_rotation(&model, to_radians(constraints.rotation));
+  apply_translation(&model, (Vec2f){size.width / 2.f, size.height / 2.f});
+
+  apply_translation(&model, pos);
 
   set_mat4f(font_shader, "model", (float *)model.m);
 
@@ -438,9 +444,11 @@ void draw_triangle(UIConstraints constraints, Color *color, Alignment align) {
   apply_alignment(align, &pos, size);
 
   Matrix4x4 model = identity();
-  apply_rotation(&model, to_radians(0));
-  model.m[3][0] = pos.x;
-  model.m[3][1] = pos.y;
+  apply_translation(&model, (Vec2f){-size.width / 2.f, -size.height / 2.f});
+  apply_rotation(&model, to_radians(constraints.rotation));
+  apply_translation(&model, (Vec2f){size.width / 2.f, size.height / 2.f});
+
+  apply_translation(&model, pos);
 
   set_mat4f(font_shader, "model", (float *)model.m);
 
@@ -461,7 +469,7 @@ void draw_triangle(UIConstraints constraints, Color *color, Alignment align) {
   glBindVertexArray(0);
 }
 
-void draw_text(const char* text, int font_size, Vec2f pos, Color *color, Alignment alignment) {
+void draw_text(const char* text, int font_size, UIConstraints constraints, Color *color, Alignment alignment) {
   use_shader(font_shader);
   if (color) {
     set_vec4f(font_shader, "textColor", color->r / 255.f, color->g / 255.f, color->b / 255.f, color->a / 255.f);
@@ -470,17 +478,24 @@ void draw_text(const char* text, int font_size, Vec2f pos, Color *color, Alignme
   }
   set_mat4f(font_shader, "projection", (float *)zephr_context.projection.m);
 
+  Vec2f pos = { 0.f, 0.f };
+  Sizef size = {0};
+
+  apply_constraints(constraints, &pos, &size);
+
   Sizef text_size = calculate_text_size(text, FONT_PIXEL_SIZE);
-  float font_scale = (float)font_size / FONT_PIXEL_SIZE;
+  float font_scale = (float)font_size / FONT_PIXEL_SIZE * size.width;
 
   apply_alignment(alignment, &pos, (Sizef){ text_size.width * font_scale, text_size.height * font_scale });
 
   Matrix4x4 model = identity();
-  model.m[0][0] = font_scale;
-  model.m[1][1] = font_scale;
-  apply_rotation(&model, to_radians(0));
-  model.m[3][0] = pos.x;
-  model.m[3][1] = pos.y;
+  apply_scale(&model, (Sizef){font_scale, font_scale});
+
+  apply_translation(&model, (Vec2f){-text_size.width * font_scale / 2.f, -text_size.height * font_scale / 2.f});
+  apply_rotation(&model, to_radians(constraints.rotation));
+  apply_translation(&model, (Vec2f){text_size.width *font_scale / 2.f, text_size.height * font_scale / 2.f});
+
+  apply_translation(&model, pos);
 
   set_mat4f(font_shader, "model", (float *)model.m);
 
@@ -495,6 +510,10 @@ void draw_text(const char* text, int font_size, Vec2f pos, Color *color, Alignme
   glActiveTexture(GL_TEXTURE0);
   glBindVertexArray(font_vao);
 
+  // we use the original text and character sizes in the loop and then we just
+  // scale up or down the model matrix to get the desired font size.
+  // this way everything works out fine and we get to transform the text using the
+  // model matrix
   int c = 0;
   int x = 0;
   while (text[c] != '\0') {
