@@ -469,14 +469,20 @@ void draw_text(const char* text, int font_size, Vec2f pos, Color *color, Alignme
     set_vec4f(font_shader, "textColor", 0.f, 0.f, 0.f, 1.f);
   }
   set_mat4f(font_shader, "projection", (float *)zephr_context.projection.m);
+
+  Sizef text_size = calculate_text_size(text, FONT_PIXEL_SIZE);
+  float font_scale = (float)font_size / FONT_PIXEL_SIZE;
+
+  apply_alignment(alignment, &pos, (Sizef){ text_size.width * font_scale, text_size.height * font_scale });
+
   Matrix4x4 model = identity();
+  model.m[0][0] = font_scale;
+  model.m[1][1] = font_scale;
+  apply_rotation(&model, to_radians(0));
   model.m[3][0] = pos.x;
   model.m[3][1] = pos.y;
 
   set_mat4f(font_shader, "model", (float *)model.m);
-
-  Sizef text_size = calculate_text_size(text, FONT_PIXEL_SIZE);
-  float font_scale = (float)font_size / FONT_PIXEL_SIZE;
 
   int max_bearing_h = 0;
   for (uint i = 0; i < strlen(text); i++) {
@@ -493,29 +499,19 @@ void draw_text(const char* text, int font_size, Vec2f pos, Color *color, Alignme
   int x = 0;
   while (text[c] != '\0') {
     Character ch = characters[(int)text[c]];
-
     // subtract the bearing width of the first character to remove the extra space
     // at the start of the text and move every char to the left by that width
-    float xpos = (x + (ch.bearing.width - first_char_bearing_w)) * font_scale;
-
-    float ypos = (text_size.height - ch.bearing.height - (text_size.height - max_bearing_h)) * font_scale;
-    Vec2f final_pos = { xpos, ypos };
-
-    float w = (ch.size.width * font_scale);
-    float h = (ch.size.height * font_scale);
-
-    apply_alignment(alignment, &final_pos, (Sizef){ text_size.width * font_scale, text_size.height * font_scale });
+    float xpos = (x + (ch.bearing.width - first_char_bearing_w));
+    float ypos = (text_size.height - ch.bearing.height - (text_size.height - max_bearing_h));
 
     float vertices[6][4] = {
-      // bottom left tri
-      {final_pos.x,     final_pos.y + h, 0.0, 1.0},
-      {final_pos.x,     final_pos.y,     0.0, 0.0},
-      {final_pos.x + w, final_pos.y,     1.0, 0.0},
+      {xpos,                 ypos + ch.size.height, 0.0, 1.0},
+      {xpos,                 ypos,                  0.0, 0.0},
+      {xpos + ch.size.width, ypos,                  1.0, 0.0},
 
-      // top right tri
-      {final_pos.x,     final_pos.y + h, 0.0, 1.0},
-      {final_pos.x + w, final_pos.y,     1.0, 0.0},
-      {final_pos.x + w, final_pos.y + h, 1.0, 1.0},
+      {xpos,                 ypos + ch.size.height, 0.0, 1.0},
+      {xpos + ch.size.width, ypos,                  1.0, 0.0},
+      {xpos + ch.size.width, ypos + ch.size.height, 1.0, 1.0},
     };
 
     glBindTexture(GL_TEXTURE_2D, ch.texture_id);

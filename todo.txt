@@ -1,5 +1,3 @@
-- rotations/scaling for text (fix the code for it)
-
 - maybe force the window to be a specific resolution
 - border decorations for shapes
 - look into SDF/vector text
