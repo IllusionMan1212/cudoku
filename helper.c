@@ -28,17 +28,33 @@ void mult_4x4(Matrix4x4 *multiplicant, Matrix4x4 *multiplier) {
   *multiplicant = result;
 }
 
-// TODO: rotate around the center of the element
-// currently we rotate around the 0, 0 point of the element
+void apply_scale(Matrix4x4 *matrix, Sizef scale) {
+  Matrix4x4 temp = identity();
+
+  temp.m[0][0] = scale.width;
+  temp.m[1][1] = scale.height;
+
+  mult_4x4(matrix, &temp);
+}
+
 void apply_rotation(Matrix4x4 *model, float angle) {
-  Matrix4x4 ident = identity();
+  Matrix4x4 temp = identity();
 
-  ident.m[0][0] = cos(angle);
-  ident.m[0][1] = sin(angle);
-  ident.m[1][0] = -sin(angle);
-  ident.m[1][1] = cos(angle);
+  temp.m[0][0] = cos(angle);
+  temp.m[0][1] = sin(angle);
+  temp.m[1][0] = -sin(angle);
+  temp.m[1][1] = cos(angle);
 
-  mult_4x4(model, &ident);
+  mult_4x4(model, &temp);
+}
+
+void apply_translation(Matrix4x4 *matrix, Vec2f pos) {
+  Matrix4x4 temp = identity();
+
+  temp.m[3][0] = pos.x;
+  temp.m[3][1] = pos.y;
+
+  mult_4x4(matrix, &temp);
 }
 
 Matrix4x4 orthographic_projection_2d(float left, float right, float bottom, float top) {
