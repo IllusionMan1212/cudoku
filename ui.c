@@ -369,16 +369,10 @@ void draw_quad(UIConstraints constraints, Color *color, float border_radius, Ali
     set_vec4f(ui_shader, "aColor", 0.f, 0.f, 0.f, 1.f);
   }
 
-  printf("width: %f, height: %f\n", constraints.width, constraints.height);
   set_float(ui_shader, "uiWidth", constraints.width);
   set_float(ui_shader, "uiHeight", constraints.height);
   set_float(ui_shader, "borderRadius", border_radius);
   set_mat4f(ui_shader, "projection", (float *)zephr_context.projection.m);
-  Matrix4x4 model = identity();
-
-  set_mat4f(font_shader, "model", (float *)model.m);
-
-  glBindVertexArray(ui_vao);
 
   Vec2f pos = { 0.f, 0.f };
   Sizef size = { 0.f, 0.f };
@@ -386,16 +380,25 @@ void draw_quad(UIConstraints constraints, Color *color, float border_radius, Ali
   apply_constraints(constraints, &pos, &size);
   apply_alignment(align, &pos, size);
 
+  Matrix4x4 model = identity();
+  apply_rotation(&model, to_radians(0));
+  model.m[3][0] = pos.x;
+  model.m[3][1] = pos.y;
+
+  set_mat4f(font_shader, "model", (float *)model.m);
+
+  glBindVertexArray(ui_vao);
+
   float vertices[6][4] = {
     // bottom left tri
-    {pos.x,              pos.y + size.height, 0.0, 1.0},
-    {pos.x,              pos.y,               0.0, 0.0},
-    {pos.x + size.width, pos.y,               1.0, 0.0},
+    {0,              0 + size.height, 0.0, 1.0},
+    {0,              0,               0.0, 0.0},
+    {0 + size.width, 0,               1.0, 0.0},
 
     // top right tri
-    {pos.x,              pos.y + size.height, 0.0, 1.0},
-    {pos.x + size.width, pos.y,               1.0, 0.0},
-    {pos.x + size.width, pos.y + size.height, 1.0, 1.0},
+    {0,              0 + size.height, 0.0, 1.0},
+    {0 + size.width, 0,               1.0, 0.0},
+    {0 + size.width, 0 + size.height, 1.0, 1.0},
   };
 
   glBindBuffer(GL_ARRAY_BUFFER, ui_vbo);
@@ -403,6 +406,57 @@ void draw_quad(UIConstraints constraints, Color *color, float border_radius, Ali
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 
   glDrawArrays(GL_TRIANGLES, 0, 6);
+
+  glBindVertexArray(0);
+}
+
+void draw_circle(UIConstraints constraints, Color *color, Alignment align) {
+  float radius = 0.f;
+
+  if (constraints.width > constraints.height) {
+    radius = constraints.height / 2.f;
+  } else {
+    radius = constraints.width / 2.f;
+  }
+  draw_quad(constraints, color, radius, align);
+}
+
+void draw_triangle(UIConstraints constraints, Color *color, Alignment align) {
+  use_shader(ui_shader);
+
+  if (color) {
+    set_vec4f(ui_shader, "aColor", color->r / 255.f, color->g / 255.f, color->b / 255.f, color->a / 255.f);
+  } else {
+    set_vec4f(ui_shader, "aColor", 0.f, 0.f, 0.f, 1.f);
+  }
+  set_mat4f(ui_shader, "projection", (float *)zephr_context.projection.m);
+
+  Vec2f pos = { 0.f, 0.f };
+  Sizef size = { 0.f, 0.f };
+
+  apply_constraints(constraints, &pos, &size);
+  apply_alignment(align, &pos, size);
+
+  Matrix4x4 model = identity();
+  apply_rotation(&model, to_radians(0));
+  model.m[3][0] = pos.x;
+  model.m[3][1] = pos.y;
+
+  set_mat4f(font_shader, "model", (float *)model.m);
+
+  glBindVertexArray(ui_vao);
+
+  float vertices[3][4] = {
+    {0 + size.width,     0,               0.0, 0.0},
+    {0,                  0,               0.0, 0.0},
+    {0 + size.width / 2, 0 + size.height, 0.0, 0.0},
+  };
+
+  glBindBuffer(GL_ARRAY_BUFFER, ui_vbo);
+  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+  glDrawArrays(GL_TRIANGLES, 0, 3);
 
   glBindVertexArray(0);
 }
@@ -421,9 +475,6 @@ void draw_text(const char* text, int font_size, Vec2f pos, Color *color, Alignme
 
   set_mat4f(font_shader, "model", (float *)model.m);
 
-  glActiveTexture(GL_TEXTURE0);
-  glBindVertexArray(font_vao);
-
   Sizef text_size = calculate_text_size(text, FONT_PIXEL_SIZE);
   float font_scale = (float)font_size / FONT_PIXEL_SIZE;
 
@@ -434,6 +485,9 @@ void draw_text(const char* text, int font_size, Vec2f pos, Color *color, Alignme
   }
 
   float first_char_bearing_w = characters[(int)text[0]].bearing.width;
+
+  glActiveTexture(GL_TEXTURE0);
+  glBindVertexArray(font_vao);
 
   int c = 0;
   int x = 0;
