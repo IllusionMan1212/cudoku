@@ -58,15 +58,15 @@ void draw_win() {
   /* set_width_constraint(&constraints, window.width, UI_CONSTRAINT_FIXED); */
   /* set_height_constraint(&constraints, window.height, UI_CONSTRAINT_FIXED); */
 
-  Alignment align = ALIGN_CENTER;
+  Alignment align = ALIGN_TOP_RIGHT;
   int font_size = 72.0f;
 
   Sizef text_size = calculate_text_size(win_text, font_size);
 
-  set_x_constraint(&constraints, 50, UI_CONSTRAINT_FIXED);
+  set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
   set_y_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
-  set_width_constraint(&constraints, 50, UI_CONSTRAINT_FIXED);
-  set_height_constraint(&constraints, 50, UI_CONSTRAINT_FIXED);
+  set_width_constraint(&constraints, text_size.width, UI_CONSTRAINT_FIXED);
+  set_height_constraint(&constraints, text_size.height, UI_CONSTRAINT_FIXED);
 
   UIConstraints circle_const;
   set_x_constraint(&circle_const, 50, UI_CONSTRAINT_FIXED);
@@ -75,7 +75,7 @@ void draw_win() {
   set_height_constraint(&circle_const, 90, UI_CONSTRAINT_FIXED);
 
 /*   draw_circle(circle_const, NULL, ALIGN_LEFT_CENTER); */
-  /* draw_quad(constraints, &bg_color, 0.0, ALIGN_TOP_LEFT); */
+  draw_quad(constraints, &bg_color, 0.0, align);
 /*   set_x_constraint(&constraints, -50, UI_CONSTRAINT_FIXED); */
 /*   draw_quad(constraints, &bg_color, 25.0, ALIGN_TOP_RIGHT); */
 /*   set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED); */
