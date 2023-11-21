@@ -13,6 +13,8 @@
 #include "ui.h"
 #include "x11.h"
 
+#define FONT_PIXEL_SIZE 128
+
 Display *display;
 Window window;
 
@@ -48,7 +50,7 @@ int init_fonts(const char *font_path) {
     FT_Done_MM_Var(ft, mm);
   }
 
-  FT_Set_Pixel_Sizes(face, 0, 128);
+  FT_Set_Pixel_Sizes(face, 0, FONT_PIXEL_SIZE);
 
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
@@ -212,7 +214,7 @@ Size zephr_get_window_size() {
 }
 
 Sizef calculate_text_size(const char *text, int font_size) {
-  float scale = (float)font_size / 128.f;
+  float scale = (float)font_size / FONT_PIXEL_SIZE;
   Sizef size = { .width = 0, .height = 0 };
   int w = 0;
   int h = 0;
@@ -422,8 +424,8 @@ void draw_text(const char* text, int font_size, Vec2f pos, Color *color, Alignme
   glActiveTexture(GL_TEXTURE0);
   glBindVertexArray(font_vao);
 
-  Sizef text_size = calculate_text_size(text, 128.0);
-  float font_scale = (float)font_size / 128.f;
+  Sizef text_size = calculate_text_size(text, FONT_PIXEL_SIZE);
+  float font_scale = (float)font_size / FONT_PIXEL_SIZE;
 
   int max_bearing_h = 0;
   for (uint i = 0; i < strlen(text); i++) {
