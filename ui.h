@@ -82,5 +82,7 @@ void set_y_constraint(UIConstraints *constraints, float value, UIConstraint type
 void set_width_constraint(UIConstraints *constraints, float value, UIConstraint type);
 void set_height_constraint(UIConstraints *constraints, float value, UIConstraint type);
 void draw_quad(UIConstraints constraints, Color *color, float border_radius, Alignment align);
+void draw_circle(UIConstraints constraints, Color *color, Alignment align);
+void draw_triangle(UIConstraints constraints, Color *color, Alignment align);
 void draw_text(const char* text, int font_size, Vec2f pos, Color *color, Alignment align);
 Sizef calculate_text_size(const char *text, int font_size);
