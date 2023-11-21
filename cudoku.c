@@ -58,17 +58,19 @@ void draw_win() {
   /* set_width_constraint(&constraints, window.width, UI_CONSTRAINT_FIXED); */
   /* set_height_constraint(&constraints, window.height, UI_CONSTRAINT_FIXED); */
 
-  Alignment align = ALIGN_TOP_RIGHT;
+  Alignment align = ALIGN_CENTER;
   int font_size = 72.0f;
 
   Sizef text_size = calculate_text_size(win_text, font_size);
 
   set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
   set_y_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
-  set_width_constraint(&constraints, text_size.width, UI_CONSTRAINT_FIXED);
-  set_height_constraint(&constraints, text_size.height, UI_CONSTRAINT_FIXED);
+  set_width_constraint(&constraints, 200, UI_CONSTRAINT_FIXED);
+  set_height_constraint(&constraints, 200, UI_CONSTRAINT_FIXED);
 
-  draw_quad(constraints, &bg_color, align);
+  draw_quad(constraints, &bg_color, 100.00, ALIGN_TOP_LEFT);
+  draw_quad(constraints, &bg_color, 0.50, ALIGN_BOTTOM_RIGHT);
+  draw_quad(constraints, &bg_color, 0.0, align);
 
   draw_text(win_text, font_size, (Vec2f){0.0, 0.0}, &text_color, align);
 }
