@@ -58,6 +58,7 @@ int init_x11(Display **display, Window *window, const char* title, int window_wi
   GLint visual_attributes[] = {
     GLX_RENDER_TYPE, GLX_RGBA_BIT,
     GLX_DOUBLEBUFFER, 1,
+    GLX_SAMPLES, 4, // MSAA
     None
   };
 
@@ -97,6 +98,7 @@ int init_x11(Display **display, Window *window, const char* title, int window_wi
   glad_glXSwapIntervalEXT(*display, *window, 1);
   // we enable blending for text
   glEnable(GL_BLEND);
+  glEnable(GL_MULTISAMPLE);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glViewport(0, 0, win_attrs.width, win_attrs.height);
   resize_x11_window(*display, *window);
