@@ -1,20 +1,32 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include "z_math.h"
 
 typedef struct Character {
-  unsigned int texture_id;
   Size size;
   Size bearing;
   unsigned int advance;
+  Vec2f tex_coords[4]; // the 4 corners of the character quad
 } Character;
+
+typedef struct Characters {
+  uint key;
+  Character value;
+} Characters;
+
+typedef struct ZephFont {
+  Characters *characters;
+  unsigned int atlas_texture_id;
+} ZephFont;
 
 typedef struct {
   bool should_quit;
   Color clear_color;
   Size window_size;
+  ZephFont font;
 
   Matrix4x4 projection;
 } Context;
@@ -59,5 +71,5 @@ void set_rotation_constraint(UIConstraints *constraints, float angle_d);
 void draw_quad(UIConstraints constraints, Color *color, float border_radius, Alignment align);
 void draw_circle(UIConstraints constraints, Color *color, Alignment align);
 void draw_triangle(UIConstraints constraints, Color *color, Alignment align);
-void draw_text(const char* text, int font_size, UIConstraints constraints, Color *color, Alignment align);
-Sizef calculate_text_size(const char *text, int font_size);
+void draw_text(const uint* text, int font_size, UIConstraints constraints, Color *color, Alignment align);
+Sizef calculate_text_size(const uint *text, int font_size);

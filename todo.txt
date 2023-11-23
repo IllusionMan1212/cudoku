@@ -1,4 +1,20 @@
 - maybe force the window to be a specific resolution
 - border decorations for shapes
-- look into SDF/vector text
-- unicode support?
+- remove the hardcoded 1920 and 1080 values when applying relative pixel constraints
+and replace them with the screen's currently active resolution
+
+text rendering improvements
+  - [x] unicode support (allows for non-ascii characters)
+  - [x] atlas texture for text glyphs (this means we only load in one texture for all text)
+
+  - SDF generation allowing for better text scaling (slower but visually better)
+    - SDF is too slow if we want to support unicode. it's acceptably fast for ascii only though.
+    - An alternative is to use MSDF at a much lower pixel height (e.g 16) which results in
+      better scaling than SDF (almost perfect) and is fast enough to include unicode.
+    - Another alternative is using a pre-baked SDF texture atlas. This is the fastest
+      but it's also the least flexible because we can't load arbitrary fonts
+    - Maybe also rendering text as vector using bezier curves. Sounds like a lot of work though.
+
+      Will probably end up using MSDF (if I can get it to work with C lol)
+
+  - instanced rendering for text (this means we only have to do one draw call for all text)

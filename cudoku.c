@@ -29,7 +29,7 @@ static const int quad_indices[] = {
 
 static const Color mistake_color = {1.f, 0.f, 0.f, 0.5f};
 
-static const char *win_text = "You won!";
+static const wide_str *win_text = U"You won!";
 
 static const char *help_texts[HELP_TEXT_SIZE] = {
   "F1 - Toggle help",
@@ -52,7 +52,7 @@ void draw_win() {
   Color bg_color = {233.f, 84.f, 32.f, 200.f};
   Color text_color = {237.f, 225.f, 215.f, 255.f};
 
-  UIConstraints constraints;
+  UIConstraints constraints = {0};
   /* set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED); */
   /* set_y_constraint(&constraints, 0, UI_CONSTRAINT_FIXED); */
   /* set_width_constraint(&constraints, window.width, UI_CONSTRAINT_FIXED); */
@@ -61,13 +61,13 @@ void draw_win() {
   Alignment align = ALIGN_CENTER;
   int font_size = 72.0f;
 
-  Sizef text_size = calculate_text_size(win_text, font_size);
+  /* Sizef text_size = calculate_text_size(win_text, font_size); */
 
   set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
   set_y_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
-  set_width_constraint(&constraints, text_size.width, UI_CONSTRAINT_FIXED);
-  set_height_constraint(&constraints, text_size.height, UI_CONSTRAINT_FIXED);
-  set_rotation_constraint(&constraints, get_time() * 50.f);
+  /* set_width_constraint(&constraints, text_size.width, UI_CONSTRAINT_FIXED); */
+  /* set_height_constraint(&constraints, text_size.height, UI_CONSTRAINT_FIXED); */
+  /* set_rotation_constraint(&constraints, 0); */
 
   /* UIConstraints circle_const; */
   /* set_x_constraint(&circle_const, 50, UI_CONSTRAINT_FIXED); */
@@ -76,7 +76,7 @@ void draw_win() {
   /* set_height_constraint(&circle_const, 90, UI_CONSTRAINT_FIXED); */
 
 /*   draw_circle(circle_const, NULL, ALIGN_LEFT_CENTER); */
-  draw_quad(constraints, &bg_color, 0.0, align);
+  /* draw_quad(constraints, &bg_color, 0.0, align); */
 /*   set_x_constraint(&constraints, -50, UI_CONSTRAINT_FIXED); */
 /*   draw_quad(constraints, &bg_color, 25.0, ALIGN_TOP_RIGHT); */
 /*   set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED); */
