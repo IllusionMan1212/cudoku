@@ -6,6 +6,7 @@
 #include <freetype/ftmm.h>
 #include <X11/Xlib.h>
 #include <glad/glx.h>
+#include <stb_ds.h>
 
 #include "cudoku.h"
 #include "shader.h"
@@ -19,7 +20,6 @@ Display *display;
 Window window;
 
 Context zephr_context;
-Character characters[128];
 Shader font_shader;
 Shader ui_shader;
 unsigned int font_vao;
@@ -40,42 +40,96 @@ int init_fonts(const char *font_path) {
     return -2;
   }
 
-  if ((face->face_flags & FT_FACE_FLAG_MULTIPLE_MASTERS)) {
-    printf("[INFO] Got a variable font\n");
-    FT_MM_Var *mm;
-    FT_Get_MM_Var(face, &mm);
+  // sets the variable font to be bold
+  /* if ((face->face_flags & FT_FACE_FLAG_MULTIPLE_MASTERS)) { */
+  /*   printf("[INFO] Got a variable font\n"); */
+  /*   FT_MM_Var *mm; */
+  /*   FT_Get_MM_Var(face, &mm); */
 
-    FT_Set_Var_Design_Coordinates(face, mm->num_namedstyles, mm->namedstyle[mm->num_namedstyles - 4].coords);
+  /*   FT_Set_Var_Design_Coordinates(face, mm->num_namedstyles, mm->namedstyle[mm->num_namedstyles - 4].coords); */
 
-    FT_Done_MM_Var(ft, mm);
-  }
+  /*   FT_Done_MM_Var(ft, mm); */
+  /* } */
 
   FT_Set_Pixel_Sizes(face, 0, FONT_PIXEL_SIZE);
 
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-  for (int c = 0; c < 128; c++) {
+  uint max_dim = (1 + (face->size->metrics.height >> 6)) * ceilf(sqrtf(face->num_glyphs));
+  uint tex_width = 1;
+  while (tex_width < max_dim) {
+    tex_width <<= 1;
+  }
+  uint tex_height = tex_width;
+
+  char *pixels = (char *)calloc(tex_width * tex_height, 1);
+  int pen_x = 0, pen_y = 0;
+
+  FT_UInt glyph_idx;
+  FT_ULong c = FT_Get_First_Char(face, &glyph_idx);
+
+  while (glyph_idx) {
     if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
-      printf("[ERROR]: failed to load glyph for char '%c'\n", c);
+      printf("[ERROR]: failed to load glyph for char '0x%lx'\n", c);
     }
 
-    unsigned int texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, face->glyph->bitmap.width,
-        face->glyph->bitmap.rows, 0, GL_RED, GL_UNSIGNED_BYTE,
-        face->glyph->bitmap.buffer);
+    /* FT_Render_Glyph(face->glyph, FT_RENDER_MODE_SDF); */
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    FT_Bitmap *bmp = &face->glyph->bitmap;
 
-    characters[c].texture_id = texture;
-    characters[c].advance = face->glyph->advance.x;
-    characters[c].size = (Size){ .width = face->glyph->bitmap.width, .height = face->glyph->bitmap.rows };
-    characters[c].bearing = (Size){ .width = face->glyph->bitmap_left, .height = face->glyph->bitmap_top };
+    if (pen_x + bmp->width >= tex_width) {
+      pen_x = 0;
+      pen_y += (1 + (face->size->metrics.height >> 6));
+    }
+
+    for (uint row = 0; row < bmp->rows; row++) {
+      for (uint col = 0; col < bmp->width; col++) {
+        int x = pen_x + col;
+        int y = pen_y + row;
+        pixels[y * tex_width + x] = bmp->buffer[row * bmp->pitch + col];
+      }
+    }
+
+    float atlas_x0 = (float)pen_x / (float)tex_width;
+    float atlas_y0 = (float)pen_y / (float)tex_height;
+    float atlas_x1 = (float)(pen_x + bmp->width) / (float)tex_width;
+    float atlas_y1 = (float)(pen_y + bmp->rows) / (float)tex_height;
+
+    Vec2f top_left = (Vec2f){ .x = atlas_x0, .y = atlas_y1 };
+    Vec2f top_right = (Vec2f){ .x = atlas_x1, .y = atlas_y1 };
+    Vec2f bottom_right = (Vec2f){ .x = atlas_x1, .y = atlas_y0 };
+    Vec2f bottom_left = (Vec2f){ .x = atlas_x0, .y = atlas_y0 };
+
+    Character character;
+
+    character.tex_coords[0] = top_left;
+    character.tex_coords[1] = top_right;
+    character.tex_coords[2] = bottom_right;
+    character.tex_coords[3] = bottom_left;
+    character.advance = face->glyph->advance.x;
+    character.size = (Size){ .width = face->glyph->bitmap.width, .height = face->glyph->bitmap.rows };
+    character.bearing = (Size){ .width = face->glyph->bitmap_left, .height = face->glyph->bitmap_top };
+
+    hmput(zephr_context.font.characters, c, character);
+
+    pen_x += bmp->width + 1;
+
+    c = FT_Get_Next_Char(face, c, &glyph_idx);
   }
+
+  unsigned int texture;
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, tex_width,
+      tex_height, 0, GL_RED, GL_UNSIGNED_BYTE,
+      pixels);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+  zephr_context.font.atlas_texture_id = texture;
 
   glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -213,7 +267,7 @@ Size zephr_get_window_size() {
   return zephr_context.window_size;
 }
 
-Sizef calculate_text_size(const char *text, int font_size) {
+Sizef calculate_text_size(const wide_str *text, int font_size) {
   float scale = (float)font_size / FONT_PIXEL_SIZE;
   Sizef size = { .width = 0, .height = 0 };
   int w = 0;
@@ -221,27 +275,29 @@ Sizef calculate_text_size(const char *text, int font_size) {
   int max_bearing_h = 0;
 
   // NOTE: I don't like looping through the characters twice, but it's fine for now
-  for (uint i = 0; i < strlen(text); i++) {
-    Character ch = characters[(uint)text[i]];
+  for (uint i = 0; (i < text[i]) != '\0'; i++) {
+    Character ch = hmget(zephr_context.font.characters, (uint)text[i]);
+    /* Character ch = characters[(uint)text[i]]; */
     max_bearing_h = max(max_bearing_h, ch.bearing.height);
   }
 
-  for (uint i = 0; i < strlen(text); i++) {
-    Character ch = characters[(uint)text[i]];
+  for (uint i = 0; (i < text[i]) != '\0'; i++) {
+    Character ch = hmget(zephr_context.font.characters, (uint)text[i]);
+    /* Character ch = characters[(uint)text[i]]; */
     w += ch.advance / 64;
 
     // remove bearing of first character
-    if (i == 0 && strlen(text) > 1) {
+    if (i == 0 && wide_str_len(text) > 1) {
       w -= ch.bearing.width;
     }
 
     // remove the trailing width of the last character
-    if (i == strlen(text) - 1) {
+    if (i == wide_str_len(text) - 1) {
       w -= ((ch.advance / 64) - (ch.bearing.width + ch.size.width));
     }
 
     // if we only have one character in the text, then remove the bearing width
-    if (strlen(text) == 1) {
+    if (wide_str_len(text) == 1) {
       w -= (ch.bearing.width);
     }
 
@@ -469,7 +525,7 @@ void draw_triangle(UIConstraints constraints, Color *color, Alignment align) {
   glBindVertexArray(0);
 }
 
-void draw_text(const char* text, int font_size, UIConstraints constraints, Color *color, Alignment alignment) {
+void draw_text(const wide_str* text, int font_size, UIConstraints constraints, Color *color, Alignment alignment) {
   use_shader(font_shader);
   if (color) {
     set_vec4f(font_shader, "textColor", color->r / 255.f, color->g / 255.f, color->b / 255.f, color->a / 255.f);
@@ -500,14 +556,16 @@ void draw_text(const char* text, int font_size, UIConstraints constraints, Color
   set_mat4f(font_shader, "model", (float *)model.m);
 
   int max_bearing_h = 0;
-  for (uint i = 0; i < strlen(text); i++) {
-    Character ch = characters[(int)text[i]];
+  for (uint i = 0; (i < text[i]) != '\0'; i++) {
+    Character ch = hmget(zephr_context.font.characters, text[i]);
+    /* Character ch = characters[(int)text[i]]; */
     max_bearing_h = max(max_bearing_h, ch.bearing.height);
   }
 
-  float first_char_bearing_w = characters[(int)text[0]].bearing.width;
+  float first_char_bearing_w = hmget(zephr_context.font.characters, (int)text[0]).bearing.width;
 
   glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, zephr_context.font.atlas_texture_id);
   glBindVertexArray(font_vao);
 
   // we use the original text and character sizes in the loop and then we just
@@ -517,23 +575,22 @@ void draw_text(const char* text, int font_size, UIConstraints constraints, Color
   int c = 0;
   int x = 0;
   while (text[c] != '\0') {
-    Character ch = characters[(int)text[c]];
+    Character ch = hmget(zephr_context.font.characters, text[c]);
+    /* Character ch = characters[(int)text[c]]; */
     // subtract the bearing width of the first character to remove the extra space
     // at the start of the text and move every char to the left by that width
     float xpos = (x + (ch.bearing.width - first_char_bearing_w));
     float ypos = (text_size.height - ch.bearing.height - (text_size.height - max_bearing_h));
 
     float vertices[6][4] = {
-      {xpos,                 ypos + ch.size.height, 0.0, 1.0},
-      {xpos,                 ypos,                  0.0, 0.0},
-      {xpos + ch.size.width, ypos,                  1.0, 0.0},
+      {xpos,                 ypos + ch.size.height, ch.tex_coords[0].x, ch.tex_coords[0].y},
+      {xpos,                 ypos,                  ch.tex_coords[3].x, ch.tex_coords[3].y},
+      {xpos + ch.size.width, ypos,                  ch.tex_coords[2].x, ch.tex_coords[2].y},
 
-      {xpos,                 ypos + ch.size.height, 0.0, 1.0},
-      {xpos + ch.size.width, ypos,                  1.0, 0.0},
-      {xpos + ch.size.width, ypos + ch.size.height, 1.0, 1.0},
+      {xpos,                 ypos + ch.size.height, ch.tex_coords[0].x, ch.tex_coords[0].y},
+      {xpos + ch.size.width, ypos,                  ch.tex_coords[2].x, ch.tex_coords[2].y},
+      {xpos + ch.size.width, ypos + ch.size.height, ch.tex_coords[1].x, ch.tex_coords[1].y},
     };
-
-    glBindTexture(GL_TEXTURE_2D, ch.texture_id);
 
     glBindBuffer(GL_ARRAY_BUFFER, font_vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);

@@ -4,7 +4,7 @@
 #include <time.h>
 
 #include <glad/glx.h>
-#include "3rdparty/stb/stb_image.h"
+#include <stb_image.h>
 
 #include "cudoku.h"
 #include "ui.h"
