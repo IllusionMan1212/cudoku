@@ -19,15 +19,20 @@
 Display *display;
 Window window;
 
+typedef struct InstanceData {
+  Vec4f position;
+  int tex_coords_index;
+} InstanceData;
+
 Context zephr_context;
 Shader font_shader;
 Shader ui_shader;
 unsigned int font_vao;
 unsigned int ui_vao;
-unsigned int font_vbo;
+unsigned int font_instance_vbo;
 unsigned int ui_vbo;
 
-// TODO: instanced rendering of ui elements and text??
+// TODO: instanced rendering of ui elements
 
 int init_fonts(const char *font_path) {
   FT_Library ft;
@@ -55,22 +60,38 @@ int init_fonts(const char *font_path) {
 
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-  uint max_dim = (1 + (face->size->metrics.height >> 6)) * ceilf(sqrtf(face->num_glyphs));
-  uint tex_width = 1;
-  while (tex_width < max_dim) {
-    tex_width <<= 1;
-  }
-  uint tex_height = tex_width;
+  /* uint max_dim = (1 + (face->size->metrics.height >> 6)) * ceilf(sqrtf(face->num_glyphs)); */
+  /* uint tex_width = 1; */
+  /* while (tex_width < max_dim) { */
+  /*   tex_width <<= 1; */
+  /* } */
+  /* uint tex_height = tex_width; */
 
-  char *pixels = (char *)calloc(tex_width * tex_height, 1);
   int pen_x = 0, pen_y = 0;
 
   FT_UInt glyph_idx;
   FT_ULong c = FT_Get_First_Char(face, &glyph_idx);
 
-  while (glyph_idx) {
-    if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
-      printf("[ERROR]: failed to load glyph for char '0x%lx'\n", c);
+  uint tex_width = 0, tex_height = 0;
+  for (uint i = 32; i < 128; i++) {
+    if (FT_Load_Char(face, i, FT_LOAD_RENDER)) {
+      printf("[ERROR]: failed to load glyph for char '0x%x'\n", i);
+    }
+
+    /* FT_Render_Glyph(face->glyph, FT_RENDER_MODE_SDF); */
+
+    tex_width += face->glyph->bitmap.width + 1;
+    tex_height = max(tex_height, face->glyph->bitmap.rows);
+  }
+
+  printf("[INFO] Texture size: %d,%d\n", tex_width, tex_height);
+
+  char *pixels = (char *)calloc(tex_width * tex_height, 1);
+
+  for (uint i = 32; i < 128; i++) {
+  /* while (glyph_idx) { */
+    if (FT_Load_Char(face, i, FT_LOAD_RENDER)) {
+      printf("[ERROR]: failed to load glyph for char '0x%x'\n", i);
     }
 
     /* FT_Render_Glyph(face->glyph, FT_RENDER_MODE_SDF); */
@@ -110,11 +131,11 @@ int init_fonts(const char *font_path) {
     character.size = (Size){ .width = face->glyph->bitmap.width, .height = face->glyph->bitmap.rows };
     character.bearing = (Size){ .width = face->glyph->bitmap_left, .height = face->glyph->bitmap_top };
 
-    hmput(zephr_context.font.characters, c, character);
+    zephr_context.font.characters[i] = character;
 
     pen_x += bmp->width + 1;
 
-    c = FT_Get_Next_Char(face, c, &glyph_idx);
+    /* c = FT_Get_Next_Char(face, c, &glyph_idx); */
   }
 
   unsigned int texture;
@@ -140,6 +161,9 @@ int init_fonts(const char *font_path) {
 }
 
 int init_ui(const char* font_path, Size window_size) {
+  uint font_vbo;
+  uint font_ebo;
+
   zephr_context.window_size = window_size;
   zephr_context.projection = orthographic_projection_2d(0.f, window_size.width, window_size.height, 0.f);
 
@@ -152,19 +176,58 @@ int init_ui(const char* font_path, Size window_size) {
     return 1;
   }
 
-  font_shader = create_shader("shaders/ui.vert", "shaders/font.frag");
+  font_shader = create_shader("shaders/font.vert", "shaders/font.frag");
   ui_shader = create_shader("shaders/ui.vert", "shaders/ui.frag");
 
   glGenVertexArrays(1, &font_vao);
   glGenVertexArrays(1, &ui_vao);
   glGenBuffers(1, &font_vbo);
+  glGenBuffers(1, &font_instance_vbo);
+  glGenBuffers(1, &font_ebo);
   glGenBuffers(1, &ui_vbo);
 
+  float quad_vertices[4][2] = {
+    {0.0, 1.0}, // top left
+    {1.0, 1.0}, // top right
+    {1.0, 0.0}, // bottom right
+    {0.0, 0.0}, // bottom left
+  };
+
+  int quad_indices[6] = {
+    0, 1, 2,
+    2, 3, 0
+  };
+
   glBindVertexArray(font_vao);
+
+  // font quad vbo
   glBindBuffer(GL_ARRAY_BUFFER, font_vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 4 * 2, quad_vertices, GL_STATIC_DRAW);
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
+
+  // font instance vbo
+  glBindBuffer(GL_ARRAY_BUFFER, font_instance_vbo);
+  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(InstanceData), (void *)0);
+  glVertexAttribDivisor(1, 1);
+  glEnableVertexAttribArray(2);
+  glVertexAttribIPointer(2, 1, GL_INT, sizeof(InstanceData), (void *)sizeof(Vec4f));
+  glVertexAttribDivisor(2, 1);
+
+  // font ebo
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, font_ebo);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quad_indices), quad_indices, GL_STATIC_DRAW);
+
+  use_shader(font_shader);
+
+  for (int i = 32; i < 128; i++) {
+    for (int j = 0; j < 4; j++) {
+      char text[32];
+      snprintf(text, 32, "texcoords[%d]", (i - 32) * 4 + j);
+      set_vec2f(font_shader, text, zephr_context.font.characters[i].tex_coords[j].x, zephr_context.font.characters[i].tex_coords[j].y);
+    }
+  }
 
   glBindVertexArray(ui_vao);
   glBindBuffer(GL_ARRAY_BUFFER, ui_vbo);
@@ -256,8 +319,15 @@ bool zephr_should_quit() {
   /* update_ui(); */
   audio_update();
 
+
   return zephr_context.should_quit;
 }
+
+// example of how to batch all text drawing in one drawcall
+// this should be called at the end of the frame
+/* void batch_text_draw(&zephr_context.texts) {
+ * do something with zephr_context.texts
+}*/
 
 void zephr_swap_buffers() {
   glXSwapBuffers(display, window);
@@ -267,7 +337,7 @@ Size zephr_get_window_size() {
   return zephr_context.window_size;
 }
 
-Sizef calculate_text_size(const wide_str *text, int font_size) {
+Sizef calculate_text_size(const char *text, int font_size) {
   float scale = (float)font_size / FONT_PIXEL_SIZE;
   Sizef size = { .width = 0, .height = 0 };
   int w = 0;
@@ -275,29 +345,27 @@ Sizef calculate_text_size(const wide_str *text, int font_size) {
   int max_bearing_h = 0;
 
   // NOTE: I don't like looping through the characters twice, but it's fine for now
-  for (uint i = 0; (i < text[i]) != '\0'; i++) {
-    Character ch = hmget(zephr_context.font.characters, (uint)text[i]);
-    /* Character ch = characters[(uint)text[i]]; */
+  for (int i = 0; text[i] != '\0'; i++) {
+    Character ch = zephr_context.font.characters[(uint)text[i]];
     max_bearing_h = max(max_bearing_h, ch.bearing.height);
   }
 
-  for (uint i = 0; (i < text[i]) != '\0'; i++) {
-    Character ch = hmget(zephr_context.font.characters, (uint)text[i]);
-    /* Character ch = characters[(uint)text[i]]; */
+  for (int i = 0; text[i] != '\0'; i++) {
+    Character ch = zephr_context.font.characters[(uint)text[i]];
     w += ch.advance / 64;
 
     // remove bearing of first character
-    if (i == 0 && wide_str_len(text) > 1) {
+    if (i == 0 && strlen(text) > 1) {
       w -= ch.bearing.width;
     }
 
     // remove the trailing width of the last character
-    if (i == wide_str_len(text) - 1) {
+    if (i == strlen(text) - 1) {
       w -= ((ch.advance / 64) - (ch.bearing.width + ch.size.width));
     }
 
     // if we only have one character in the text, then remove the bearing width
-    if (wide_str_len(text) == 1) {
+    if (strlen(text) == 1) {
       w -= (ch.bearing.width);
     }
 
@@ -525,7 +593,7 @@ void draw_triangle(UIConstraints constraints, Color *color, Alignment align) {
   glBindVertexArray(0);
 }
 
-void draw_text(const wide_str* text, int font_size, UIConstraints constraints, Color *color, Alignment alignment) {
+void draw_text(const char* text, int font_size, UIConstraints constraints, Color *color, Alignment alignment) {
   use_shader(font_shader);
   if (color) {
     set_vec4f(font_shader, "textColor", color->r / 255.f, color->g / 255.f, color->b / 255.f, color->a / 255.f);
@@ -556,17 +624,18 @@ void draw_text(const wide_str* text, int font_size, UIConstraints constraints, C
   set_mat4f(font_shader, "model", (float *)model.m);
 
   int max_bearing_h = 0;
-  for (uint i = 0; (i < text[i]) != '\0'; i++) {
-    Character ch = hmget(zephr_context.font.characters, text[i]);
-    /* Character ch = characters[(int)text[i]]; */
+  for (int i = 0; (i < text[i]) != '\0'; i++) {
+    Character ch = zephr_context.font.characters[(int)text[i]];
     max_bearing_h = max(max_bearing_h, ch.bearing.height);
   }
 
-  float first_char_bearing_w = hmget(zephr_context.font.characters, (int)text[0]).bearing.width;
+  float first_char_bearing_w = zephr_context.font.characters[(int)text[0]].bearing.width;
 
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, zephr_context.font.atlas_texture_id);
   glBindVertexArray(font_vao);
+
+  InstanceData* instance_data = malloc(sizeof(InstanceData) * strlen(text));
 
   // we use the original text and character sizes in the loop and then we just
   // scale up or down the model matrix to get the desired font size.
@@ -574,33 +643,34 @@ void draw_text(const wide_str* text, int font_size, UIConstraints constraints, C
   // model matrix
   int c = 0;
   int x = 0;
+  /* int line = 0; */
   while (text[c] != '\0') {
-    Character ch = hmget(zephr_context.font.characters, text[c]);
-    /* Character ch = characters[(int)text[c]]; */
+    Character ch = zephr_context.font.characters[(int)text[c]];
     // subtract the bearing width of the first character to remove the extra space
     // at the start of the text and move every char to the left by that width
     float xpos = (x + (ch.bearing.width - first_char_bearing_w));
-    float ypos = (text_size.height - ch.bearing.height - (text_size.height - max_bearing_h));
+    float ypos = /*(line * text_size.height) + */(text_size.height - ch.bearing.height - (text_size.height - max_bearing_h));
 
-    float vertices[6][4] = {
-      {xpos,                 ypos + ch.size.height, ch.tex_coords[0].x, ch.tex_coords[0].y},
-      {xpos,                 ypos,                  ch.tex_coords[3].x, ch.tex_coords[3].y},
-      {xpos + ch.size.width, ypos,                  ch.tex_coords[2].x, ch.tex_coords[2].y},
+    /* if (text[c] == '\n') { */
+    /*   line++; */
+    /*   x = 0; */
+    /*   c++; */
+    /*   continue; */
+    /* } */
 
-      {xpos,                 ypos + ch.size.height, ch.tex_coords[0].x, ch.tex_coords[0].y},
-      {xpos + ch.size.width, ypos,                  ch.tex_coords[2].x, ch.tex_coords[2].y},
-      {xpos + ch.size.width, ypos + ch.size.height, ch.tex_coords[1].x, ch.tex_coords[1].y},
-    };
-
-    glBindBuffer(GL_ARRAY_BUFFER, font_vbo);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    instance_data[c].position = (Vec4f){xpos, ypos, ch.size.width, ch.size.height};
+    instance_data[c].tex_coords_index = (int)text[c] - 32;
 
     x += (ch.advance >> 6); 
     c++;
   }
+
+  glBindBuffer(GL_ARRAY_BUFFER, font_instance_vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(InstanceData) * strlen(text), instance_data, GL_DYNAMIC_DRAW);
+
+  glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL, strlen(text));
+
+  free(instance_data);
 
   glBindVertexArray(0);
   glBindTexture(GL_TEXTURE_2D, 0);

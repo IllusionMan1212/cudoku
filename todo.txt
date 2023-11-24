@@ -4,8 +4,12 @@
 and replace them with the screen's currently active resolution
 
 text rendering improvements
-  - [x] unicode support (allows for non-ascii characters)
+  - [ ] unicode support (allows for non-ascii characters)
+    - unicode support removed for the foreseeable future
   - [x] atlas texture for text glyphs (this means we only load in one texture for all text)
+    - [x] better estimation of atlas width and height (currently the generated atlas texture
+          has a lot of empty space (over 50% of the texture's height))
+       - ended up just looping over the ascii glyphs and finding the max width and height
 
   - SDF generation allowing for better text scaling (slower but visually better)
     - SDF is too slow if we want to support unicode. it's acceptably fast for ascii only though.
@@ -17,4 +21,24 @@ text rendering improvements
 
       Will probably end up using MSDF (if I can get it to work with C lol)
 
-  - instanced rendering for text (this means we only have to do one draw call for all text)
+  - [x] instanced rendering for text (this means we only have to do one draw call for all text)
+    running into problems. we got the positions to instance correctly but the texture coordinates
+    are more difficult to work with because we can't just send a texcoord per vertex per instance
+    - Ended up passing hardcoded texcoords of all glyphs to the shader using a uniform array which allows us to render infinite
+      instances of text in one draw call without exceeding any buffer limits. Of course this does mean that if we were to support
+      unicode we'd have to make the uniform array bigger and its size dynamic. So unicode is dropped for now
+
+
+text tests / iGPU / Non-instaned rendering
+ - 10 texts / 72 font size
+   0.8-0.9ms per frame (1200-1300fps)
+
+ - 100 texts / 48 font size
+   1.2-1.3ms per frame (770-830fps)
+
+ - 1000 texts / 28 font size
+   9-9.5ms per frame (105-110fps)
+
+ - 10000 texts / 9 font size
+   80-85ms per frame (12-13fps)
+

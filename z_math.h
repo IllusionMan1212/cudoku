@@ -24,6 +24,14 @@ typedef struct Vec2f {
   float y;
 } Vec2f;
 
+typedef struct Vec4f {
+  float x;
+  float y;
+  float z;
+  float w;
+} Vec4f;
+
+
 typedef struct Color {
   float r;
   float g;
