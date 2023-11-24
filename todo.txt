@@ -1,5 +1,6 @@
-- maybe force the window to be a specific resolution
-- border decorations for shapes
+- "premade" (but also customizable) ui elements (buttons, text boxes, etc) with instanced rendering
+- maybe force the window to be a specific resolution (for cudoku only? or all games?)
+- border decorations for shapes (maybe. or maybe only for ui elements)
 - remove the hardcoded 1920 and 1080 values when applying relative pixel constraints
 and replace them with the screen's currently active resolution
 
@@ -27,18 +28,4 @@ text rendering improvements
     - Ended up passing hardcoded texcoords of all glyphs to the shader using a uniform array which allows us to render infinite
       instances of text in one draw call without exceeding any buffer limits. Of course this does mean that if we were to support
       unicode we'd have to make the uniform array bigger and its size dynamic. So unicode is dropped for now
-
-
-text tests / iGPU / Non-instaned rendering
- - 10 texts / 72 font size
-   0.8-0.9ms per frame (1200-1300fps)
-
- - 100 texts / 48 font size
-   1.2-1.3ms per frame (770-830fps)
-
- - 1000 texts / 28 font size
-   9-9.5ms per frame (105-110fps)
-
- - 10000 texts / 9 font size
-   80-85ms per frame (12-13fps)
 
