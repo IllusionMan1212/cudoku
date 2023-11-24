@@ -70,14 +70,6 @@ Matrix4x4 orthographic_projection_2d(float left, float right, float bottom, floa
     return result;
 }
 
-uint wide_str_len(const wide_str *text) {
-  uint len = 0;
-  for (uint i = 0; text[i] != '\0'; i++) {
-    len++;
-  }
-  return len;
-}
-
 int max(int a, int b) {
     return a > b ? a : b;
 }
