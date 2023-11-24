@@ -203,6 +203,8 @@ int main(int argc, char *argv[]) {
     /* float x = clampf(500.0f * timer_elapsed(&my_time), 0.0, window_size.width - size.width); */
     /* draw_text("Bruh", 1.0f, (Vec2){0.0, size.height}, &(Color){255.f, 0.f, 0.f, 255.f}); */
 
+
+    zephr_batch_text_draw();
     zephr_swap_buffers();
   }
   /* while (!quit) { */

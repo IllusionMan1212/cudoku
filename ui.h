@@ -17,11 +17,24 @@ typedef struct ZephFont {
   unsigned int atlas_texture_id;
 } ZephFont;
 
-typedef struct {
+typedef struct TextInstance {
+  Vec4f position;
+  int tex_coords_index;
+  float model[4][4];
+} TextInstance;
+
+typedef struct Text {
+  TextInstance *instance_data;
+  int instance_count;
+  int instance_capacity;
+} Text;
+
+typedef struct Context {
   bool should_quit;
   Color clear_color;
   Size window_size;
   ZephFont font;
+  Text texts;
 
   Matrix4x4 projection;
 } Context;
@@ -58,6 +71,7 @@ void deinit_zephr();
 bool zephr_should_quit();
 void zephr_swap_buffers();
 Size zephr_get_window_size();
+void zephr_batch_text_draw();
 void set_x_constraint(UIConstraints *constraints, float value, UIConstraint type);
 void set_y_constraint(UIConstraints *constraints, float value, UIConstraint type);
 void set_width_constraint(UIConstraints *constraints, float value, UIConstraint type);

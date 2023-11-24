@@ -6,7 +6,6 @@
 #include <freetype/ftmm.h>
 #include <X11/Xlib.h>
 #include <glad/glx.h>
-#include <stb_ds.h>
 
 #include "cudoku.h"
 #include "shader.h"
@@ -19,11 +18,6 @@
 Display *display;
 Window window;
 
-typedef struct InstanceData {
-  Vec4f position;
-  int tex_coords_index;
-} InstanceData;
-
 Context zephr_context;
 Shader font_shader;
 Shader ui_shader;
@@ -31,8 +25,6 @@ unsigned int font_vao;
 unsigned int ui_vao;
 unsigned int font_instance_vbo;
 unsigned int ui_vbo;
-
-// TODO: instanced rendering of ui elements
 
 int init_fonts(const char *font_path) {
   FT_Library ft;
@@ -60,17 +52,10 @@ int init_fonts(const char *font_path) {
 
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-  /* uint max_dim = (1 + (face->size->metrics.height >> 6)) * ceilf(sqrtf(face->num_glyphs)); */
-  /* uint tex_width = 1; */
-  /* while (tex_width < max_dim) { */
-  /*   tex_width <<= 1; */
-  /* } */
-  /* uint tex_height = tex_width; */
-
   int pen_x = 0, pen_y = 0;
 
-  FT_UInt glyph_idx;
-  FT_ULong c = FT_Get_First_Char(face, &glyph_idx);
+  /* FT_UInt glyph_idx; */
+  /* FT_ULong c = FT_Get_First_Char(face, &glyph_idx); */
 
   uint tex_width = 0, tex_height = 0;
   for (uint i = 32; i < 128; i++) {
@@ -166,6 +151,9 @@ int init_ui(const char* font_path, Size window_size) {
 
   zephr_context.window_size = window_size;
   zephr_context.projection = orthographic_projection_2d(0.f, window_size.width, window_size.height, 0.f);
+  zephr_context.texts.instance_count = 0;
+  zephr_context.texts.instance_capacity = 16;
+  zephr_context.texts.instance_data = malloc(sizeof(TextInstance) * zephr_context.texts.instance_capacity);
 
   int res = init_fonts(font_path);
   if (res == -1) {
@@ -209,11 +197,23 @@ int init_ui(const char* font_path, Size window_size) {
   // font instance vbo
   glBindBuffer(GL_ARRAY_BUFFER, font_instance_vbo);
   glEnableVertexAttribArray(1);
-  glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(InstanceData), (void *)0);
+  glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(TextInstance), (void *)0);
   glVertexAttribDivisor(1, 1);
   glEnableVertexAttribArray(2);
-  glVertexAttribIPointer(2, 1, GL_INT, sizeof(InstanceData), (void *)sizeof(Vec4f));
+  glVertexAttribIPointer(2, 1, GL_INT, sizeof(TextInstance), (void *)sizeof(Vec4f));
   glVertexAttribDivisor(2, 1);
+  glEnableVertexAttribArray(3);
+  glEnableVertexAttribArray(4);
+  glEnableVertexAttribArray(5);
+  glEnableVertexAttribArray(6);
+  glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(TextInstance), (void *)(sizeof(Vec4f) + sizeof(int)));
+  glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(TextInstance), (void *)(sizeof(Vec4f) * 2 + sizeof(int)));
+  glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(TextInstance), (void *)(sizeof(Vec4f) * 3 + sizeof(int)));
+  glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(TextInstance), (void *)(sizeof(Vec4f) * 4 + sizeof(int)));
+  glVertexAttribDivisor(3, 1);
+  glVertexAttribDivisor(4, 1);
+  glVertexAttribDivisor(5, 1);
+  glVertexAttribDivisor(6, 1);
 
   // font ebo
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, font_ebo);
@@ -325,9 +325,17 @@ bool zephr_should_quit() {
 
 // example of how to batch all text drawing in one drawcall
 // this should be called at the end of the frame
-/* void batch_text_draw(&zephr_context.texts) {
- * do something with zephr_context.texts
-}*/
+void zephr_batch_text_draw() {
+  glBindBuffer(GL_ARRAY_BUFFER, font_instance_vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(TextInstance) * zephr_context.texts.instance_count, zephr_context.texts.instance_data, GL_DYNAMIC_DRAW);
+
+  glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL, zephr_context.texts.instance_count);
+
+  glBindVertexArray(0);
+  glBindTexture(GL_TEXTURE_2D, 0);
+
+  zephr_context.texts.instance_count = 0;
+}
 
 void zephr_swap_buffers() {
   glXSwapBuffers(display, window);
@@ -621,8 +629,6 @@ void draw_text(const char* text, int font_size, UIConstraints constraints, Color
 
   apply_translation(&model, pos);
 
-  set_mat4f(font_shader, "model", (float *)model.m);
-
   int max_bearing_h = 0;
   for (int i = 0; (i < text[i]) != '\0'; i++) {
     Character ch = zephr_context.font.characters[(int)text[i]];
@@ -635,45 +641,39 @@ void draw_text(const char* text, int font_size, UIConstraints constraints, Color
   glBindTexture(GL_TEXTURE_2D, zephr_context.font.atlas_texture_id);
   glBindVertexArray(font_vao);
 
-  InstanceData* instance_data = malloc(sizeof(InstanceData) * strlen(text));
-
   // we use the original text and character sizes in the loop and then we just
   // scale up or down the model matrix to get the desired font size.
   // this way everything works out fine and we get to transform the text using the
   // model matrix
   int c = 0;
   int x = 0;
-  /* int line = 0; */
   while (text[c] != '\0') {
     Character ch = zephr_context.font.characters[(int)text[c]];
     // subtract the bearing width of the first character to remove the extra space
     // at the start of the text and move every char to the left by that width
     float xpos = (x + (ch.bearing.width - first_char_bearing_w));
-    float ypos = /*(line * text_size.height) + */(text_size.height - ch.bearing.height - (text_size.height - max_bearing_h));
+    float ypos = (text_size.height - ch.bearing.height - (text_size.height - max_bearing_h));
 
-    /* if (text[c] == '\n') { */
-    /*   line++; */
-    /*   x = 0; */
-    /*   c++; */
-    /*   continue; */
-    /* } */
-
-    instance_data[c].position = (Vec4f){xpos, ypos, ch.size.width, ch.size.height};
-    instance_data[c].tex_coords_index = (int)text[c] - 32;
+    zephr_context.texts.instance_data[c + zephr_context.texts.instance_count].position = (Vec4f){xpos, ypos, ch.size.width, ch.size.height};
+    zephr_context.texts.instance_data[c + zephr_context.texts.instance_count].tex_coords_index = (int)text[c] - 32;
+    memcpy(zephr_context.texts.instance_data[c + zephr_context.texts.instance_count].model, model.m, sizeof(float[4][4]));
 
     x += (ch.advance >> 6); 
     c++;
   }
 
-  glBindBuffer(GL_ARRAY_BUFFER, font_instance_vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(InstanceData) * strlen(text), instance_data, GL_DYNAMIC_DRAW);
+  zephr_context.texts.instance_count += strlen(text);
 
-  glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL, strlen(text));
-
-  free(instance_data);
-
-  glBindVertexArray(0);
-  glBindTexture(GL_TEXTURE_2D, 0);
+  if (zephr_context.texts.instance_count >= zephr_context.texts.instance_capacity) {
+    zephr_context.texts.instance_capacity *= 2;
+    TextInstance* new_ptr = realloc(zephr_context.texts.instance_data, sizeof(TextInstance) * zephr_context.texts.instance_capacity);
+    if (!new_ptr) {
+      printf("Failed to reallocate memory for text instances\n");
+      exit(1);
+    } else {
+      zephr_context.texts.instance_data = new_ptr;
+    }
+  }
 }
 
 /* enum Element { */

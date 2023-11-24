@@ -4,10 +4,10 @@ layout (location = 0) in vec2 vertex;
 // per instance
 layout (location = 1) in vec4 offset;
 layout (location = 2) in int tex_index;
+layout (location = 3) in mat4 model; // this takes locations 3,4,5,6
 
 out vec2 v_TexCoords;
 uniform mat4 projection;
-uniform mat4 model;
 // buffer for all the 96 ascii characters' texcoords
 uniform vec2 texcoords[96 * 4];
 
