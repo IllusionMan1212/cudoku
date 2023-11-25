@@ -1,5 +1,4 @@
 - "premade" (but also customizable) ui elements (buttons, text boxes, etc) with instanced rendering
-- maybe force the window to be a specific resolution (for cudoku only? or all games?)
 - border decorations for shapes (maybe. or maybe only for ui elements)
 
 text rendering improvements
