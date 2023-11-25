@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <X11/Xatom.h>
 #include <glad/glx.h>
 
 static bool fullscreen = false;
@@ -37,6 +38,12 @@ int init_x11(Display **display, Window *window, const char* title, int window_wi
   *window = XCreateWindow(*display, root, 0, 0, window_width, window_height, 0,
       DefaultDepth(*display, screen), InputOutput, visual,
       CWColormap | CWEventMask, &attributes);
+
+  // hints to the WM that the window is a dialog window which makes it a floating
+  // window in titling WMs (only tested on DWM though)
+  Atom net_wm_window_type = XInternAtom(*display, "_NET_WM_WINDOW_TYPE", False);
+  Atom net_wm_window_type_dialog = XInternAtom(*display, "_NET_WM_WINDOW_TYPE_DIALOG", False);
+  XChangeProperty(*display, *window, net_wm_window_type, XA_ATOM, 32, PropModeReplace, (unsigned char*)&net_wm_window_type_dialog, 1);
 
   XMapWindow(*display, *window);
   XStoreName(*display, *window, title);
@@ -159,4 +166,22 @@ void toggle_fullscreen(Display *display, Window window) {
   }
 
   fullscreen = !fullscreen;
+}
+
+void get_screen_size(Display *display, int *width, int *height) {
+  Screen *screen = DefaultScreenOfDisplay(display);
+
+  *width = screen->width;
+  *height = screen->height;
+}
+
+void x11_make_window_non_resizable(Display *display, Window window, int width, int height) {
+  XSizeHints *size_hints = XAllocSizeHints();
+  size_hints->flags = PMinSize | PMaxSize;
+  size_hints->min_width = width;
+  size_hints->min_height = height;
+  size_hints->max_width = width;
+  size_hints->max_height = height;
+  XSetWMNormalHints(display, window, size_hints);
+  XFree(size_hints);
 }

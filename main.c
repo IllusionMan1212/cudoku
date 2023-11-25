@@ -122,11 +122,12 @@ int main(int argc, char *argv[]) {
   }
 
   Color clear_color = {0.2f, 0.15f, 0.5f, 1.f};
-  int res = init_zephr(font_path, title, (Size){800, 600}, &clear_color);
+  int res = init_zephr(font_path, title, (Size){900, 900}, &clear_color);
   if (res != 0) {
     printf("[ERROR]: could not initialize zephr\n");
     return 1;
   }
+  make_window_non_resizable();
 
   srand(time(NULL));
 

@@ -241,6 +241,11 @@ int init_ui(const char* font_path, Size window_size) {
   return 0;
 }
 
+// Has to be called after calling init_zephr()
+void make_window_non_resizable() {
+  x11_make_window_non_resizable(display, window, zephr_context.window_size.width, zephr_context.window_size.height);
+}
+
 int init_zephr(const char* font_path, const char* window_title, Size window_size, Color *clear_color) {
   int res = audio_init();
   if (res != 0) {
@@ -263,6 +268,7 @@ int init_zephr(const char* font_path, const char* window_title, Size window_size
     zephr_context.clear_color = (Color){0.0, 0.0, 0.0, 1.0};
   }
 
+  get_screen_size(display, &zephr_context.screen_size.width, &zephr_context.screen_size.height);
   start_internal_timer();
 
   return 0;
@@ -421,7 +427,7 @@ void set_width_constraint(UIConstraints *constraints, float value, UIConstraint 
       constraints->width = (value * zephr_context.window_size.width);
       break;
     case UI_CONSTRAINT_RELATIVE_PIXELS:
-      constraints->width = zephr_context.window_size.width / 1920.f * value;
+      constraints->width = zephr_context.window_size.width / (float)zephr_context.screen_size.width * value;
       break;
     case UI_CONSTRAINT_ASPECT_RATIO:
       constraints->width = constraints->height * value;
@@ -438,7 +444,7 @@ void set_height_constraint(UIConstraints *constraints, float value, UIConstraint
       constraints->height = (value * zephr_context.window_size.height);
       break;
     case UI_CONSTRAINT_RELATIVE_PIXELS:
-      constraints->height = zephr_context.window_size.height / 1080.f * value;
+      constraints->height = zephr_context.window_size.height / (float)zephr_context.screen_size.height * value;
       break;
     case UI_CONSTRAINT_ASPECT_RATIO:
       constraints->height = constraints->width * value;
