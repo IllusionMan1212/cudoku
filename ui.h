@@ -20,6 +20,7 @@ typedef struct ZephFont {
 typedef struct TextInstance {
   Vec4f position;
   int tex_coords_index;
+  Color color;
   float model[4][4];
 } TextInstance;
 
@@ -79,8 +80,8 @@ void set_y_constraint(UIConstraints *constraints, float value, UIConstraint type
 void set_width_constraint(UIConstraints *constraints, float value, UIConstraint type);
 void set_height_constraint(UIConstraints *constraints, float value, UIConstraint type);
 void set_rotation_constraint(UIConstraints *constraints, float angle_d);
-void draw_quad(UIConstraints constraints, Color *color, float border_radius, Alignment align);
-void draw_circle(UIConstraints constraints, Color *color, Alignment align);
-void draw_triangle(UIConstraints constraints, Color *color, Alignment align);
-void draw_text(const char* text, int font_size, UIConstraints constraints, Color *color, Alignment align);
+void draw_quad(UIConstraints constraints, const Color *color, float border_radius, Alignment align);
+void draw_circle(UIConstraints constraints, const Color *color, Alignment align);
+void draw_triangle(UIConstraints constraints, const Color *color, Alignment align);
+void draw_text(const char* text, int font_size, UIConstraints constraints, const Color *color, Alignment align);
 Sizef calculate_text_size(const char *text, int font_size);

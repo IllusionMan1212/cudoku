@@ -151,10 +151,19 @@ int main(int argc, char *argv[]) {
     last_t = now;
 
     if (!use_texture) {
-      draw_grid(window_size);
+      draw_board(&game, window_size);
     }
 
     draw_timer(&game.timer);
+
+    if (timer_ended(&game.help_timer)) {
+      timer_stop(&game.help_timer);
+      game.should_draw_help = false;
+    }
+
+    if (game.should_draw_help) {
+      draw_help(&game.help_timer);
+    }
 
     if (game.has_won) {
       draw_win(&game);
@@ -221,14 +230,6 @@ int main(int argc, char *argv[]) {
   /*   /1*   Color text_color = { 200.0f, 50.0f, 50.0f, 1.0f }; *1/ */
   /*   /1*   draw_text_at(font_shader, text, text_pos, text_scale, font_vao, font_vbo, (float *)projection.m, &text_color); *1/ */
   /*   /1* } *1/ */
-
-  /*   if (timer_ended(&game.help_timer)) { */
-  /*     timer_stop(&game.help_timer); */
-  /*     game.should_draw_help = false; */
-  /*   } */
-
-  /*   /1* if (game.should_draw_help) *1/ */
-  /*   /1*   draw_help_overlay(selection_shader, font_shader, selection_vao, selection_vbo, font_vao, font_vbo, &projection, height, &game.help_timer); *1/ */
 
   /*   /1* glXSwapBuffers(display, window); *1/ */
   /* } */

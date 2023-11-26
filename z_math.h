@@ -31,7 +31,6 @@ typedef struct Vec4f {
   float w;
 } Vec4f;
 
-
 typedef struct Color {
   float r;
   float g;

@@ -42,17 +42,7 @@ void toggle_selection(Cudoku *game);
 void generate_random_board(Cudoku *game);
 void reset_board(Cudoku *game);
 bool toggle_help(Cudoku *game);
-void draw_help_overlay(
-    Shader overlay_shader,
-    Shader font_shader,
-    unsigned int overlay_vao,
-    unsigned int overlay_vbo,
-    unsigned int font_vao,
-    unsigned int font_vbo,
-    Matrix4x4 *projection,
-    int window_height,
-    Timer *timer
-);
+void draw_help(Timer *timer);
 void draw_timer(Timer *timer);
 void draw_win(Cudoku *game);
-void draw_grid(Size window_size);
+void draw_board(Cudoku *game, Size window_size);
