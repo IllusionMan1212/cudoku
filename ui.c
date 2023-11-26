@@ -26,6 +26,31 @@ unsigned int ui_vao;
 unsigned int font_instance_vbo;
 unsigned int ui_vbo;
 
+void new_text_instance_list(TextInstanceList *list, uint capacity) {
+  list->size = 0;
+  list->capacity = capacity;
+  list->data = malloc(list->capacity * sizeof(TextInstance));
+}
+
+void clear_text_instance_list(TextInstanceList *list) {
+  list->size = 0;
+  memset(list->data, 0, list->size * sizeof(TextInstance));
+}
+
+void add_text_instance(TextInstanceList *list, TextInstance instance) {
+  if (list->size >= list->capacity) {
+    list->capacity *= 2;
+    TextInstance* temp = realloc(list->data, list->capacity * sizeof(TextInstance));
+    if (!temp) {
+      printf("[FATAL] Failed to reallocate memory for text instance list\n");
+      exit(1);
+    }
+    list->data = temp;
+  }
+
+  list->data[list->size++] = instance;
+}
+
 int init_fonts(const char *font_path) {
   FT_Library ft;
   if (FT_Init_FreeType(&ft)) {
@@ -69,7 +94,7 @@ int init_fonts(const char *font_path) {
     tex_height = max(tex_height, face->glyph->bitmap.rows);
   }
 
-  printf("[INFO] Texture size: %d,%d\n", tex_width, tex_height);
+  printf("[INFO] Font atlas texture size: %d,%d\n", tex_width, tex_height);
 
   char *pixels = (char *)calloc(tex_width * tex_height, 1);
 
@@ -153,9 +178,7 @@ int init_ui(const char* font_path, Size window_size) {
 
   zephr_context.window_size = window_size;
   zephr_context.projection = orthographic_projection_2d(0.f, window_size.width, window_size.height, 0.f);
-  zephr_context.texts.instance_count = 0;
-  zephr_context.texts.instance_capacity = 16;
-  zephr_context.texts.instance_data = malloc(sizeof(TextInstance) * zephr_context.texts.instance_capacity);
+  new_text_instance_list(&zephr_context.texts, 16);
 
   int res = init_fonts(font_path);
   if (res == -1) {
@@ -335,15 +358,14 @@ bool zephr_should_quit() {
 // this should be called at the end of the frame
 void zephr_batch_text_draw() {
   glBindBuffer(GL_ARRAY_BUFFER, font_instance_vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(TextInstance) * zephr_context.texts.instance_count, zephr_context.texts.instance_data, GL_DYNAMIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(TextInstance) * zephr_context.texts.size, zephr_context.texts.data, GL_DYNAMIC_DRAW);
 
-  glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL, zephr_context.texts.instance_count);
+  glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL, zephr_context.texts.size);
 
   glBindVertexArray(0);
   glBindTexture(GL_TEXTURE_2D, 0);
 
-  zephr_context.texts.instance_count = 0;
-  memset(zephr_context.texts.instance_data, 0, sizeof(TextInstance) * zephr_context.texts.instance_count);
+  clear_text_instance_list(&zephr_context.texts);
 }
 
 void zephr_swap_buffers() {
@@ -532,7 +554,7 @@ void draw_quad(UIConstraints constraints, Color *color, float border_radius, Ali
 
   apply_translation(&model, pos);
 
-  set_mat4f(font_shader, "model", (float *)model.m);
+  set_mat4f(ui_shader, "model", (float *)model.m);
 
   glBindVertexArray(ui_vao);
 
@@ -591,7 +613,7 @@ void draw_triangle(UIConstraints constraints, Color *color, Alignment align) {
 
   apply_translation(&model, pos);
 
-  set_mat4f(font_shader, "model", (float *)model.m);
+  set_mat4f(ui_shader, "model", (float *)model.m);
 
   glBindVertexArray(ui_vao);
 
@@ -650,17 +672,6 @@ void draw_text(const char* text, int font_size, UIConstraints constraints, Color
   glBindTexture(GL_TEXTURE_2D, zephr_context.font.atlas_texture_id);
   glBindVertexArray(font_vao);
 
-  if (zephr_context.texts.instance_count + strlen(text) >= zephr_context.texts.instance_capacity) {
-    zephr_context.texts.instance_capacity *= 2;
-    TextInstance* new_ptr = realloc(zephr_context.texts.instance_data, sizeof(TextInstance) * zephr_context.texts.instance_capacity);
-    if (!new_ptr) {
-      printf("Failed to reallocate memory for text instances\n");
-      exit(1);
-    } else {
-      zephr_context.texts.instance_data = new_ptr;
-    }
-  }
-
   // we use the original text and character sizes in the loop and then we just
   // scale up or down the model matrix to get the desired font size.
   // this way everything works out fine and we get to transform the text using the
@@ -674,15 +685,18 @@ void draw_text(const char* text, int font_size, UIConstraints constraints, Color
     float xpos = (x + (ch.bearing.width - first_char_bearing_w));
     float ypos = (text_size.height - ch.bearing.height - (text_size.height - max_bearing_h));
 
-    zephr_context.texts.instance_data[c + zephr_context.texts.instance_count].position = (Vec4f){xpos, ypos, ch.size.width, ch.size.height};
-    zephr_context.texts.instance_data[c + zephr_context.texts.instance_count].tex_coords_index = (int)text[c] - 32;
-    memcpy(zephr_context.texts.instance_data[c + zephr_context.texts.instance_count].model, model.m, sizeof(float[4][4]));
+    TextInstance instance = {
+      .position = (Vec4f){xpos, ypos, ch.size.width, ch.size.height},
+      .tex_coords_index = (int)text[c] - 32,
+      .model = {0},
+    };
+    memcpy(instance.model, model.m, sizeof(float[4][4]));
+    
+    add_text_instance(&zephr_context.texts, instance);
 
     x += (ch.advance >> 6); 
     c++;
   }
-
-  zephr_context.texts.instance_count += strlen(text);
 }
 
 /* enum Element { */
