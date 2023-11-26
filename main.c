@@ -88,10 +88,6 @@ void handle_keypress(XEvent xev, Cudoku *game) {
 int main(int argc, char *argv[]) {
   bool use_texture = false;
 
-  // scale factors for the entire board to nicely fit as a square inside
-  // the window
-  float x_scale = 1.f, y_scale = 1.f;
-
   if (argc > 1) {
     char *flag = argv[1];
     if (strcmp(flag, "-h") == 0 || strcmp(flag, "--help") == 0) {
@@ -121,8 +117,9 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  Color clear_color = {0.2f, 0.15f, 0.5f, 1.f};
-  int res = init_zephr(font_path, title, (Size){900, 900}, &clear_color);
+  Color clear_color = {0.0f, 0.0f, 0.0f, 1.f};
+  Size window_size = {900, 900};
+  int res = init_zephr(font_path, title, window_size, &clear_color);
   if (res != 0) {
     printf("[ERROR]: could not initialize zephr\n");
     return 1;
@@ -136,20 +133,13 @@ int main(int argc, char *argv[]) {
   generate_random_board(&game);
 
   Shader grid_shader;
-  unsigned int grid_texture;
-  if (!use_texture)
-    grid_shader = create_shader("shaders/board_v.vert", "shaders/grid_f.frag");
-  else
+  if (use_texture)
     grid_shader = create_shader("shaders/board_v.vert", "shaders/board_f.frag");
  
-  int board_vao = prepare_bg(use_texture, &grid_texture);
-
-  Shader selection_shader = create_shader("shaders/board_v.vert", "shaders/quad.frag");
+  /* Shader selection_shader = create_shader("shaders/board_v.vert", "shaders/quad.frag"); */
   unsigned int selection_vao, selection_vbo;
   Color selection_color = {0.4f, 0.4f, 1.0f, 0.5f};
   prepare_selection_box(&selection_vao, &selection_vbo);
-
-  Shader win_shader = create_shader("shaders/board_v.vert", "shaders/quad.frag");
 
   float delta_t, last_t = 0.0;
   timer_start(&game.help_timer, 5.0f);
@@ -160,49 +150,15 @@ int main(int argc, char *argv[]) {
     delta_t = now - last_t;
     last_t = now;
 
-    Size window_size = zephr_get_window_size();
-
-    /* int width = 15.f; */
-    /* int height = 35.f; */
-    /* int padding = 10.f; */
-
-    float ratio_w = (float)window_size.width / 1920.f;
-    float ratio_h = (float)window_size.height / 1080.f;
-
-    int width = window_size.height;
-    int height = window_size.width;
-
-    if (window_size.height > window_size.width) {
-      width = window_size.width;
-      height = window_size.width;
-    } else {
-      width = window_size.height;
-      height = window_size.height;
+    if (!use_texture) {
+      draw_grid(window_size);
     }
 
-    draw_win(&game);
+    draw_timer(&game.timer);
 
-    /* draw_quad( */
-    /*     (Vec2){0.0, 0.0}, */
-    /*     (Size){width, height}, */
-    /*     &(Color){240.f, 235.f, 227.f, 255.f}, */
-    /*     ALIGN_CENTER); */
-    /* UIConstraints constraints = {0}; */
-    /* set_x_constraint(&constraints, 0.0, UI_CONSTRAINT_FIXED); */
-    /* set_y_constraint(&constraints, 0.0, UI_CONSTRAINT_FIXED); */
-    /* set_width_constraint(&constraints, 50, UI_CONSTRAINT_FIXED); */
-    /* set_height_constraint(&constraints, 50, UI_CONSTRAINT_FIXED); */
-
-    /* draw_quad( */
-    /*     constraints, */
-    /*     &(Color){240.f, 235.f, 227.f, 255.f}, */
-    /*     ALIGN_TOP_LEFT */
-    /*     ); */
-
-    /* Size size = calculate_text_size("Bruh", 1.0f); */
-    /* float x = clampf(500.0f * timer_elapsed(&my_time), 0.0, window_size.width - size.width); */
-    /* draw_text("Bruh", 1.0f, (Vec2){0.0, size.height}, &(Color){255.f, 0.f, 0.f, 255.f}); */
-
+    if (game.has_won) {
+      draw_win(&game);
+    }
 
     zephr_batch_text_draw();
     zephr_swap_buffers();
@@ -240,18 +196,7 @@ int main(int argc, char *argv[]) {
   /*   /1*   } *1/ */
   /*   /1* } *1/ */
 
-  /*   float transform[4][4] = { */
-  /*     {x_scale, 0, 0, 0}, */
-  /*     {0, y_scale, 0, 0}, */
-  /*     {0, 0, 1, 0}, */
-  /*     {0, 0, 0, 1}, */
-  /*   }; */
-
-  /*   /1* Matrix4x4 projection = orthographic_projection_2d(0.0f, width, 0.0f, height); *1/ */
-
-  /*   /1* if (!use_texture) *1/ */
-  /*   /1*   draw_bg_grid_shader(grid_shader, board_vao, (float *)transform, width < height ? width : height); *1/ */
-  /*   /1* else *1/ */
+  /*   /1* if (use_texture) *1/ */
   /*   /1*   draw_bg_grid_texture(grid_shader, board_vao, grid_texture, (float *)transform); *1/ */
 
   /*   if (game.should_draw_selection) */
@@ -277,8 +222,6 @@ int main(int argc, char *argv[]) {
   /*   /1*   draw_text_at(font_shader, text, text_pos, text_scale, font_vao, font_vbo, (float *)projection.m, &text_color); *1/ */
   /*   /1* } *1/ */
 
-  /*   /1* draw_timer(font_shader, font_vao, font_vbo, (float *)projection.m, &game.timer, width); *1/ */
-
   /*   if (timer_ended(&game.help_timer)) { */
   /*     timer_stop(&game.help_timer); */
   /*     game.should_draw_help = false; */
@@ -286,10 +229,6 @@ int main(int argc, char *argv[]) {
 
   /*   /1* if (game.should_draw_help) *1/ */
   /*   /1*   draw_help_overlay(selection_shader, font_shader, selection_vao, selection_vbo, font_vao, font_vbo, &projection, height, &game.help_timer); *1/ */
-
-  /*   /1* if (game.has_won) { *1/ */
-  /*   /1*   draw_win_overlay(win_shader, font_shader, win_vao, font_vao, font_vbo, (float *)transform, &game); *1/ */
-  /*   /1* } *1/ */
 
   /*   /1* glXSwapBuffers(display, window); *1/ */
   /* } */

@@ -53,5 +53,6 @@ void draw_help_overlay(
     int window_height,
     Timer *timer
 );
-void draw_timer(Shader shader, unsigned int vao, unsigned int vbo, float *projection, Timer *timer, int win_width);
+void draw_timer(Timer *timer);
 void draw_win(Cudoku *game);
+void draw_grid(Size window_size);

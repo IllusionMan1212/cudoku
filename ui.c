@@ -320,7 +320,6 @@ bool zephr_should_quit() {
         zephr_context.window_size = (Size){ .width = xce.width, .height = xce.height };
         zephr_context.projection = orthographic_projection_2d(0.f, xce.width, xce.height, 0.f);
         resize_x11_window(display, window);
-        /* set_scale_factor(xce.width, xce.height, &x_scale, &y_scale); */
       }
 
     } else if (xev.type == KeyPress) {
@@ -354,8 +353,8 @@ bool zephr_should_quit() {
   return zephr_context.should_quit;
 }
 
-// example of how to batch all text drawing in one drawcall
-// this should be called at the end of the frame
+/* This MUST be called at the end of the frame
+ if you wish to draw text */
 void zephr_batch_text_draw() {
   glBindBuffer(GL_ARRAY_BUFFER, font_instance_vbo);
   glBufferData(GL_ARRAY_BUFFER, sizeof(TextInstance) * zephr_context.texts.size, zephr_context.texts.data, GL_DYNAMIC_DRAW);
@@ -368,6 +367,7 @@ void zephr_batch_text_draw() {
   clear_text_instance_list(&zephr_context.texts);
 }
 
+// This MUST be called at the end of the frame
 void zephr_swap_buffers() {
   glXSwapBuffers(display, window);
 }
