@@ -74,15 +74,37 @@ void draw_win(Cudoku *game) {
   draw_text(time_text, 48.f, constraints, &text_color, ALIGN_CENTER);
 }
 
-void set_scale_factor(int width, int height, float *x, float *y) {
-  if (width > height) {
-    float ratio = (float)height / (float)width;
-    *x = ratio;
-    *y = 1.f;
-  } else {
-    float ratio = (float)width / (float)height;
-    *x = 1.f;
-    *y = ratio;
+void draw_grid(Size window_size) {
+  Color bg_color = {240.0f, 235.0f, 227.0f, 255.f};
+  Color color = {0.0f, 0.0f, 0.0f, 255.f};
+  UIConstraints constraints = {0};
+  set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
+  set_y_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
+  set_width_constraint(&constraints, window_size.width, UI_CONSTRAINT_FIXED);
+  set_height_constraint(&constraints, window_size.height, UI_CONSTRAINT_FIXED);
+
+  draw_quad(constraints, &bg_color, 0.0, ALIGN_TOP_LEFT);
+
+  for (int i = 1; i < 10; i++) {
+    set_x_constraint(&constraints, i * 100, UI_CONSTRAINT_FIXED);
+    set_y_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
+    if (i % 3 == 0) {
+      set_width_constraint(&constraints, 4, UI_CONSTRAINT_FIXED);
+    } else {
+      set_width_constraint(&constraints, 2, UI_CONSTRAINT_FIXED);
+    }
+    set_height_constraint(&constraints, window_size.height, UI_CONSTRAINT_FIXED);
+    draw_quad(constraints, &color, 0.0, ALIGN_TOP_LEFT);
+
+    set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
+    set_y_constraint(&constraints, i * 100, UI_CONSTRAINT_FIXED);
+    set_width_constraint(&constraints, window_size.width, UI_CONSTRAINT_FIXED);
+    if (i % 3 == 0) {
+      set_height_constraint(&constraints, 4, UI_CONSTRAINT_FIXED);
+    } else {
+      set_height_constraint(&constraints, 2, UI_CONSTRAINT_FIXED);
+    }
+    draw_quad(constraints, &color, 0.0, ALIGN_TOP_LEFT);
   }
 }
 
@@ -617,82 +639,96 @@ void draw_ui_element_at(Shader shader, unsigned int vao, unsigned int vbo, Matri
   glBindVertexArray(0);
 }
 
-void draw_help_overlay(Shader overlay_shader, Shader font_shader, unsigned int overlay_vao, unsigned int overlay_vbo, unsigned int font_vao, unsigned int font_vbo, Matrix4x4 *projection, int window_height, Timer *timer) {
-  int total_help_texts_height = 20;
+/* void draw_help_overlay(Timer *timer) { */
+/*   int total_help_texts_height = 20; */
 
-  int const text_padding = 10;
-  float const text_scale = 0.3f;
-  int overlay_height = 0;
-  int overlay_width = 0;
+/*   int const text_padding = 10; */
+/*   float const text_scale = 0.3f; */
+/*   int overlay_height = 0; */
+/*   int overlay_width = 0; */
 
-  for (int i = 0; i < HELP_TEXT_SIZE; i++) {
-    /* Size text_size = calculate_text_size(help_texts[i], text_scale); */
-    /* overlay_height += text_size.height + text_padding; */
-    /* overlay_width = max(overlay_width, text_size.width + text_padding * 2); */
-  }
-  Size size = {.width = overlay_width, .height = overlay_height + text_padding * 2};
-  Vec2 pos = {
-    .x = 0,
-    .y = window_height - size.height
-  };
-  Color color = {
-    .r = 0.1f,
-    .g = 0.1f,
-    .b = 0.1f,
-    .a = 0.95f
-  };
-  draw_ui_element_at(overlay_shader, overlay_vao, overlay_vbo, projection, pos, size, color);
+/*   for (int i = 0; i < HELP_TEXT_SIZE; i++) { */
+/*     /1* Size text_size = calculate_text_size(help_texts[i], text_scale); *1/ */
+/*     /1* overlay_height += text_size.height + text_padding; *1/ */
+/*     /1* overlay_width = max(overlay_width, text_size.width + text_padding * 2); *1/ */
+/*   } */
+/*   Size size = {.width = overlay_width, .height = overlay_height + text_padding * 2}; */
+/*   /1* Vec2 pos = { *1/ */
+/*   /1*   .x = 0, *1/ */
+/*   /1*   .y = window_height - size.height *1/ */
+/*   /1* }; *1/ */
+/*   Color color = { */
+/*     .r = 0.1f, */
+/*     .g = 0.1f, */
+/*     .b = 0.1f, */
+/*     .a = 0.95f */
+/*   }; */
+/*   /1* draw_ui_element_at(overlay_shader, overlay_vao, overlay_vbo, projection, pos, size, color); *1/ */
 
-  for (int i = 0; i < HELP_TEXT_SIZE; i++) {
-    /* Size text_size = calculate_text_size(help_texts[i], text_scale); */
-    /* Vec2 text_pos = { */
-    /*   .x = text_padding, */
-    /*   .y = window_height - total_help_texts_height - (text_padding * 2) */
-    /* }; */
-    /* total_help_texts_height += text_size.height + text_padding; */
-    /* draw_text_at(font_shader, help_texts[i], text_pos, text_scale, font_vao, font_vbo, (float *)projection->m, NULL); */
-  }
+/*   for (int i = 0; i < HELP_TEXT_SIZE; i++) { */
+/*     /1* Size text_size = calculate_text_size(help_texts[i], text_scale); *1/ */
+/*     /1* Vec2 text_pos = { *1/ */
+/*     /1*   .x = text_padding, *1/ */
+/*     /1*   .y = window_height - total_help_texts_height - (text_padding * 2) *1/ */
+/*     /1* }; *1/ */
+/*     /1* total_help_texts_height += text_size.height + text_padding; *1/ */
+/*     /1* draw_text_at(font_shader, help_texts[i], text_pos, text_scale, font_vao, font_vbo, (float *)projection->m, NULL); *1/ */
+/*   } */
 
-  if (timer->is_running) {
-    char closing_in_text[128];
-    /* snprintf(closing_in_text, sizeof(closing_in_text), "Hiding in %ds", (int)timer_remaining(timer) + 1); */
-    /* Size closing_in_text_size = calculate_text_size(closing_in_text, text_scale / 2.0); */
-    /* Vec2 closing_in_text_pos = { */
-    /*   .x = overlay_width - closing_in_text_size.width, */
-    /*   .y = window_height - closing_in_text_size.height - text_padding, */
-    /* }; */
-    /* Color closing_in_text_color = { */
-    /*   .r = 255.0f, */
-    /*   .g = 150.0f, */
-    /*   .b = 0.0f, */
-    /*   .a = 1.0f, */
-    /* }; */
-    /* draw_text_at(font_shader, closing_in_text, closing_in_text_pos, text_scale / 2.0, font_vao, font_vbo, (float *)projection->m, &closing_in_text_color); */
-  }
-}
+/*   if (timer->is_running) { */
+/*     char closing_in_text[128]; */
+/*     /1* snprintf(closing_in_text, sizeof(closing_in_text), "Hiding in %ds", (int)timer_remaining(timer) + 1); *1/ */
+/*     /1* Size closing_in_text_size = calculate_text_size(closing_in_text, text_scale / 2.0); *1/ */
+/*     /1* Vec2 closing_in_text_pos = { *1/ */
+/*     /1*   .x = overlay_width - closing_in_text_size.width, *1/ */
+/*     /1*   .y = window_height - closing_in_text_size.height - text_padding, *1/ */
+/*     /1* }; *1/ */
+/*     /1* Color closing_in_text_color = { *1/ */
+/*     /1*   .r = 255.0f, *1/ */
+/*     /1*   .g = 150.0f, *1/ */
+/*     /1*   .b = 0.0f, *1/ */
+/*     /1*   .a = 1.0f, *1/ */
+/*     /1* }; *1/ */
+/*     /1* draw_text_at(font_shader, closing_in_text, closing_in_text_pos, text_scale / 2.0, font_vao, font_vbo, (float *)projection->m, &closing_in_text_color); *1/ */
+/*   } */
+/* } */
 
-void draw_timer(Shader shader, unsigned int vao, unsigned int vbo, float *projection, Timer *timer, int win_width) {
+void draw_timer(Timer *timer) {
   if (!timer->is_running) return;
 
   char timer_text[64];
+  Color text_color = {
+    .r = 66.0f,
+    .g = 92.0f,
+    .b = 124.0f,
+    .a = 255.0f,
+  };
+    Color bg_color = {
+    .r = 0.0f,
+    .g = 0.0f,
+    .b = 0.0f,
+    .a = 25.0f,
+  };
+  float font_size = 32.f;
+  Alignment alignment = ALIGN_BOTTOM_RIGHT;
 
   float elapsed = timer_elapsed(timer);
   int minutes = elapsed / 60;
   int seconds = (int)elapsed % 60;
 
-  /* snprintf(timer_text, sizeof(timer_text), "Time: %02d:%02d", minutes, seconds); */
-  /* float text_scale = 0.35f; */
-  /* Size text_size = calculate_text_size(timer_text, text_scale); */
-  /* Vec2 text_pos = { */
-  /*   .x = win_width - text_size.width - 10, */
-  /*   .y = 10, */
-  /* }; */
-  /* Color text_color = { */
-  /*   .r = 66.0f, */
-  /*   .g = 92.0f, */
-  /*   .b = 124.0f, */
-  /*   .a = 1.0f, */
-  /* }; */
+  snprintf(timer_text, sizeof(timer_text), "Time: %02d:%02d", minutes, seconds);
 
-  /* draw_text_at(shader, timer_text, text_pos, text_scale, vao, vbo, projection, &text_color); */
+  Sizef text_size = calculate_text_size(timer_text, font_size);
+
+  UIConstraints constraints = {0};
+  set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
+  set_y_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
+  set_width_constraint(&constraints, text_size.width + 4, UI_CONSTRAINT_FIXED);
+  set_height_constraint(&constraints, text_size.height + 4, UI_CONSTRAINT_FIXED);
+
+  draw_quad(constraints, &bg_color, 0.0, alignment);
+
+  set_width_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
+  set_height_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
+  draw_text(timer_text, font_size, constraints, &text_color, alignment);
 }
