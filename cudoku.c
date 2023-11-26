@@ -47,48 +47,31 @@ static const char *help_texts[HELP_TEXT_SIZE] = {
   "Ctrl+Q/Esc - Quit"
 };
 
-void draw_win() {
+void draw_win(Cudoku *game) {
   Size window = zephr_get_window_size();
-  Color bg_color = {233.f, 84.f, 32.f, 200.f};
+  Color bg_color = {0, 0, 0, 180.f};
   Color text_color = {237.f, 225.f, 215.f, 255.f};
 
+  char time_text[64];
+
+  float time_elapsed = game->win_time - game->timer.time;
+  snprintf(time_text, 64, "Solved in: %02dm%02ds", (int)time_elapsed / 60, (int)time_elapsed % 60);
+
   UIConstraints constraints = {0};
-  /* set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED); */
-  /* set_y_constraint(&constraints, 0, UI_CONSTRAINT_FIXED); */
-  /* set_width_constraint(&constraints, window.width, UI_CONSTRAINT_FIXED); */
-  /* set_height_constraint(&constraints, window.height, UI_CONSTRAINT_FIXED); */
-
-  Alignment align = ALIGN_TOP_LEFT;
-  int font_size = 72.0f;
-
-  /* Sizef text_size = calculate_text_size(win_text, font_size); */
-
   set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
   set_y_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
-  /* set_width_constraint(&constraints, text_size.width, UI_CONSTRAINT_FIXED); */
-  /* set_height_constraint(&constraints, text_size.height, UI_CONSTRAINT_FIXED); */
-  /* set_rotation_constraint(&constraints, 0); */
+  set_width_constraint(&constraints, window.width, UI_CONSTRAINT_FIXED);
+  set_height_constraint(&constraints, window.height, UI_CONSTRAINT_FIXED);
 
-  /* UIConstraints circle_const; */
-  /* set_x_constraint(&circle_const, 50, UI_CONSTRAINT_FIXED); */
-  /* set_y_constraint(&circle_const, 0, UI_CONSTRAINT_FIXED); */
-  /* set_width_constraint(&circle_const, 70, UI_CONSTRAINT_FIXED); */
-  /* set_height_constraint(&circle_const, 90, UI_CONSTRAINT_FIXED); */
-
-/*   draw_circle(circle_const, NULL, ALIGN_LEFT_CENTER); */
-  /* draw_quad(constraints, &bg_color, 0.0, align); */
-/*   set_x_constraint(&constraints, -50, UI_CONSTRAINT_FIXED); */
-/*   draw_quad(constraints, &bg_color, 25.0, ALIGN_TOP_RIGHT); */
-/*   set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED); */
-/*   draw_quad(constraints, &bg_color, 0.5, ALIGN_BOTTOM_RIGHT); */
-/*   draw_quad(constraints, &bg_color, 0.0, align); */
-
-  /* draw_triangle(constraints, &bg_color, ALIGN_CENTER); */
+  draw_quad(constraints, &bg_color, 0.0, ALIGN_CENTER);
 
   set_width_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
   set_height_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
-  /* set_rotation_constraint(&constraints, 0); */
-  draw_text(win_text, font_size, constraints, &text_color, align);
+
+  set_y_constraint(&constraints, -30, UI_CONSTRAINT_FIXED);
+  draw_text(win_text, 72.f, constraints, &text_color, ALIGN_CENTER);
+  set_y_constraint(&constraints, 30, UI_CONSTRAINT_FIXED);
+  draw_text(time_text, 48.f, constraints, &text_color, ALIGN_CENTER);
 }
 
 void set_scale_factor(int width, int height, float *x, float *y) {
@@ -184,50 +167,6 @@ void draw_numbers(Shader shader, unsigned int vao, unsigned int vbo, float *tran
   }
 
   glBindVertexArray(0);
-}
-
-unsigned int prepare_win_overlay() {
-  unsigned int vbo, vao, ebo;
-  glGenVertexArrays(1, &vao);
-  glGenBuffers(1, &vbo);
-  glGenBuffers(1, &ebo);
-
-  glBindVertexArray(vao);
-
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), quad_vertices, GL_STATIC_DRAW);
-
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quad_indices), quad_indices, GL_STATIC_DRAW);
-
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
-
-  glBindVertexArray(0);
-
-  return vao;
-}
-
-void draw_win_overlay(Shader win_shader, Shader font_shader, unsigned int vao, unsigned int font_vao, unsigned int font_vbo, float *transform, Cudoku *game) {
-  use_shader(win_shader);
-
-  set_mat4f(win_shader, "transform", transform);
-  set_vec4f(win_shader, "aColor", 0.0, 0.0, 0.0, 0.8);
-
-  glBindVertexArray(vao);
-
-  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-  glBindVertexArray(0);
-
-  char time_text[64];
-  float time_elapsed = game->win_time - game->timer.time;
-  snprintf(time_text, 64, "Solved in: %02dm%02ds", (int)time_elapsed / 60, (int)time_elapsed % 60);
-
-  /* Size win_text_size = calculate_text_size(win_text, 1.0f); */
-  /* Size time_text_size = calculate_text_size(time_text, 1.0f); */
-  /* draw_text_center(font_shader, win_text, win_text_size, 1.5f, font_vao, font_vbo, transform, 0.0, 75.0); */
-  /* draw_text_center(font_shader, time_text, time_text_size, 0.8f, font_vao, font_vbo, transform, 0.0, -75.0); */
 }
 
 /* void draw_pause_overlay(Cudoku *game) { */

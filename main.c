@@ -150,7 +150,6 @@ int main(int argc, char *argv[]) {
   prepare_selection_box(&selection_vao, &selection_vbo);
 
   Shader win_shader = create_shader("shaders/board_v.vert", "shaders/quad.frag");
-  unsigned int win_vao = prepare_win_overlay();
 
   float delta_t, last_t = 0.0;
   timer_start(&game.help_timer, 5.0f);
@@ -181,7 +180,7 @@ int main(int argc, char *argv[]) {
       height = window_size.height;
     }
 
-    draw_win();
+    draw_win(&game);
 
     /* draw_quad( */
     /*     (Vec2){0.0, 0.0}, */
