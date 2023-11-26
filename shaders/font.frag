@@ -1,9 +1,9 @@
 #version 330 core
 in vec2 v_TexCoords;
+in vec4 textColor;
 out vec4 FragColor;
 
 uniform sampler2D text;
-uniform vec4 textColor;
 
 const float smoothness = 0.05;
 const float outlineDistance = 0.50;

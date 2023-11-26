@@ -13,12 +13,12 @@
 #include "ui.h"
 #include "x11.h"
 
-#define FONT_PIXEL_SIZE 128
+#define FONT_PIXEL_SIZE 64
 
 Display *display;
 Window window;
 
-Context zephr_context;
+Context zephr_context = {0};
 Shader font_shader;
 Shader ui_shader;
 unsigned int font_vao;
@@ -215,7 +215,7 @@ int init_ui(const char* font_path, Size window_size) {
 
   // font quad vbo
   glBindBuffer(GL_ARRAY_BUFFER, font_vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 4 * 2, quad_vertices, GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), quad_vertices, GL_STATIC_DRAW);
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
 
@@ -228,17 +228,20 @@ int init_ui(const char* font_path, Size window_size) {
   glVertexAttribIPointer(2, 1, GL_INT, sizeof(TextInstance), (void *)sizeof(Vec4f));
   glVertexAttribDivisor(2, 1);
   glEnableVertexAttribArray(3);
+  glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(TextInstance), (void *)(sizeof(Vec4f) + sizeof(int)));
+  glVertexAttribDivisor(3, 1);
   glEnableVertexAttribArray(4);
   glEnableVertexAttribArray(5);
   glEnableVertexAttribArray(6);
-  glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(TextInstance), (void *)(sizeof(Vec4f) + sizeof(int)));
+  glEnableVertexAttribArray(7);
   glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(TextInstance), (void *)(sizeof(Vec4f) * 2 + sizeof(int)));
   glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(TextInstance), (void *)(sizeof(Vec4f) * 3 + sizeof(int)));
   glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(TextInstance), (void *)(sizeof(Vec4f) * 4 + sizeof(int)));
-  glVertexAttribDivisor(3, 1);
+  glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, sizeof(TextInstance), (void *)(sizeof(Vec4f) * 5 + sizeof(int)));
   glVertexAttribDivisor(4, 1);
   glVertexAttribDivisor(5, 1);
   glVertexAttribDivisor(6, 1);
+  glVertexAttribDivisor(7, 1);
 
   // font ebo
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, font_ebo);
@@ -356,6 +359,11 @@ bool zephr_should_quit() {
 /* This MUST be called at the end of the frame
  if you wish to draw text */
 void zephr_batch_text_draw() {
+  use_shader(font_shader);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, zephr_context.font.atlas_texture_id);
+  glBindVertexArray(font_vao);
+
   glBindBuffer(GL_ARRAY_BUFFER, font_instance_vbo);
   glBufferData(GL_ARRAY_BUFFER, sizeof(TextInstance) * zephr_context.texts.size, zephr_context.texts.data, GL_DYNAMIC_DRAW);
 
@@ -527,7 +535,7 @@ void apply_alignment(Alignment align, Vec2f *pos, Sizef size) {
   }
 }
 
-void draw_quad(UIConstraints constraints, Color *color, float border_radius, Alignment align) {
+void draw_quad(UIConstraints constraints, const Color *color, float border_radius, Alignment align) {
   use_shader(ui_shader);
 
   if (color) {
@@ -579,7 +587,7 @@ void draw_quad(UIConstraints constraints, Color *color, float border_radius, Ali
   glBindVertexArray(0);
 }
 
-void draw_circle(UIConstraints constraints, Color *color, Alignment align) {
+void draw_circle(UIConstraints constraints, const Color *color, Alignment align) {
   float radius = 0.f;
 
   if (constraints.width > constraints.height) {
@@ -590,7 +598,7 @@ void draw_circle(UIConstraints constraints, Color *color, Alignment align) {
   draw_quad(constraints, color, radius, align);
 }
 
-void draw_triangle(UIConstraints constraints, Color *color, Alignment align) {
+void draw_triangle(UIConstraints constraints, const Color *color, Alignment align) {
   use_shader(ui_shader);
 
   if (color) {
@@ -632,12 +640,11 @@ void draw_triangle(UIConstraints constraints, Color *color, Alignment align) {
   glBindVertexArray(0);
 }
 
-void draw_text(const char* text, int font_size, UIConstraints constraints, Color *color, Alignment alignment) {
+void draw_text(const char* text, int font_size, UIConstraints constraints, const Color *color, Alignment alignment) {
   use_shader(font_shader);
+  Color text_color = { 0 };
   if (color) {
-    set_vec4f(font_shader, "textColor", color->r / 255.f, color->g / 255.f, color->b / 255.f, color->a / 255.f);
-  } else {
-    set_vec4f(font_shader, "textColor", 0.f, 0.f, 0.f, 1.f);
+    text_color = (Color){ color->r / 255.f, color->g / 255.f, color->b / 255.f, color->a / 255.f };
   }
   set_mat4f(font_shader, "projection", (float *)zephr_context.projection.m);
 
@@ -654,6 +661,7 @@ void draw_text(const char* text, int font_size, UIConstraints constraints, Color
   Matrix4x4 model = identity();
   apply_scale(&model, (Sizef){font_scale, font_scale});
 
+  // rotate around the center point of the text
   apply_translation(&model, (Vec2f){-text_size.width * font_scale / 2.f, -text_size.height * font_scale / 2.f});
   apply_rotation(&model, to_radians(constraints.rotation));
   apply_translation(&model, (Vec2f){text_size.width *font_scale / 2.f, text_size.height * font_scale / 2.f});
@@ -667,10 +675,6 @@ void draw_text(const char* text, int font_size, UIConstraints constraints, Color
   }
 
   float first_char_bearing_w = zephr_context.font.characters[(int)text[0]].bearing.width;
-
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, zephr_context.font.atlas_texture_id);
-  glBindVertexArray(font_vao);
 
   // we use the original text and character sizes in the loop and then we just
   // scale up or down the model matrix to get the desired font size.
@@ -688,8 +692,10 @@ void draw_text(const char* text, int font_size, UIConstraints constraints, Color
     TextInstance instance = {
       .position = (Vec4f){xpos, ypos, ch.size.width, ch.size.height},
       .tex_coords_index = (int)text[c] - 32,
+      .color = text_color,
       .model = {0},
     };
+
     memcpy(instance.model, model.m, sizeof(float[4][4]));
     
     add_text_instance(&zephr_context.texts, instance);
