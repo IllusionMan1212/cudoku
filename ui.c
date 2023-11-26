@@ -142,6 +142,8 @@ int init_fonts(const char *font_path) {
   FT_Done_Face(face);
   FT_Done_FreeType(ft);
 
+  free(pixels);
+
   return 0;
 }
 
@@ -341,6 +343,7 @@ void zephr_batch_text_draw() {
   glBindTexture(GL_TEXTURE_2D, 0);
 
   zephr_context.texts.instance_count = 0;
+  memset(zephr_context.texts.instance_data, 0, sizeof(TextInstance) * zephr_context.texts.instance_count);
 }
 
 void zephr_swap_buffers() {
@@ -647,6 +650,17 @@ void draw_text(const char* text, int font_size, UIConstraints constraints, Color
   glBindTexture(GL_TEXTURE_2D, zephr_context.font.atlas_texture_id);
   glBindVertexArray(font_vao);
 
+  if (zephr_context.texts.instance_count + strlen(text) >= zephr_context.texts.instance_capacity) {
+    zephr_context.texts.instance_capacity *= 2;
+    TextInstance* new_ptr = realloc(zephr_context.texts.instance_data, sizeof(TextInstance) * zephr_context.texts.instance_capacity);
+    if (!new_ptr) {
+      printf("Failed to reallocate memory for text instances\n");
+      exit(1);
+    } else {
+      zephr_context.texts.instance_data = new_ptr;
+    }
+  }
+
   // we use the original text and character sizes in the loop and then we just
   // scale up or down the model matrix to get the desired font size.
   // this way everything works out fine and we get to transform the text using the
@@ -669,17 +683,6 @@ void draw_text(const char* text, int font_size, UIConstraints constraints, Color
   }
 
   zephr_context.texts.instance_count += strlen(text);
-
-  if (zephr_context.texts.instance_count >= zephr_context.texts.instance_capacity) {
-    zephr_context.texts.instance_capacity *= 2;
-    TextInstance* new_ptr = realloc(zephr_context.texts.instance_data, sizeof(TextInstance) * zephr_context.texts.instance_capacity);
-    if (!new_ptr) {
-      printf("Failed to reallocate memory for text instances\n");
-      exit(1);
-    } else {
-      zephr_context.texts.instance_data = new_ptr;
-    }
-  }
 }
 
 /* enum Element { */

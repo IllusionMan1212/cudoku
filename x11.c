@@ -110,6 +110,8 @@ int init_x11(Display **display, Window *window, const char* title, int window_wi
   glViewport(0, 0, win_attrs.width, win_attrs.height);
   resize_x11_window(*display, *window);
 
+  XFree(fbc);
+
   return 0;
 }
 
