@@ -115,11 +115,15 @@ void draw_board(Cudoku *game, Size window_size) {
 
   for (int i = 0; i < 9; i++) {
     for (int j = 0; j < 9; j++) {
+      if (!game->board[i][j].value) {
+        continue;
+      }
       Sizef text_size = calculate_text_size("7", 72.f);
+      char num[2];
+      snprintf(num, sizeof(num), "%d", game->board[i][j].value);
       set_y_constraint(&constraints, i * 100 + cell_size.height / 2.f - text_size.height / 2.f, UI_CONSTRAINT_FIXED);
       set_x_constraint(&constraints, j * 100 + cell_size.width / 2.f - text_size.width / 2.f, UI_CONSTRAINT_FIXED);
-      // TODO:
-      draw_text("7", 72.f, constraints, &color, ALIGN_TOP_LEFT);
+      draw_text(num, 72.f, constraints, &color, ALIGN_TOP_LEFT);
     }
   }
 }

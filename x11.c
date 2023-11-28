@@ -64,6 +64,7 @@ int init_x11(Display **display, Window *window, const char* title, int window_wi
 
   GLint visual_attributes[] = {
     GLX_RENDER_TYPE, GLX_RGBA_BIT,
+    GLX_DEPTH_SIZE, 24,
     GLX_DOUBLEBUFFER, 1,
     GLX_SAMPLES, 4, // MSAA
     None
