@@ -24,11 +24,11 @@ typedef struct TextInstance {
   float model[4][4];
 } TextInstance;
 
-typedef struct TextInstanceList {
+typedef struct GlyphInstanceList {
   TextInstance *data;
   int size;
   int capacity;
-} TextInstanceList;
+} GlyphInstanceList;
 
 typedef struct Context {
   bool should_quit;
@@ -36,7 +36,6 @@ typedef struct Context {
   Size screen_size;
   Size window_size;
   ZephFont font;
-  TextInstanceList texts;
 
   Matrix4x4 projection;
 } Context;

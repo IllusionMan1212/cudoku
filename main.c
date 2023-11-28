@@ -169,7 +169,6 @@ int main(int argc, char *argv[]) {
       draw_win(&game);
     }
 
-    zephr_batch_text_draw();
     zephr_swap_buffers();
   }
   /* while (!quit) { */

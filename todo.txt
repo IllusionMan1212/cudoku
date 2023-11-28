@@ -3,19 +3,6 @@
 - some kind of ui layout/hierarchy system (for later, when we actually need it)
 - grid texture (draw_image? or draw_texture? func)
 
-- sooo a bit of a problem... since we render all our text in one draw call
-  at the end of the frame. this means that we can't have text that's rendered
-  in behind anything else. This needs to be fixed because drawing any overlay
-  will result in all the text being drawn OVER everything else, which might not be
-  the desired behavior at times (e.g. help/win overlay where the board numbers need to be
-  rendered under the overlay(s))
-  - possible solutions :Clueless:
-    - z-index based on the order of creation (e.g. the first drawable created has the lowest z-index)
-      I _think_ this works because we can just chuck a global z-index whenever we call
-      draw_text or draw_quad/etc.. and the shader _should_ take care of everything
-    - every draw_text call actually makes a single draw call (compromises on performance but way easier to use)
-
-
 text rendering improvements
   - [ ] unicode support (allows for non-ascii characters)
     - unicode support removed for the foreseeable future

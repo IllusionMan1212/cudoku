@@ -26,23 +26,23 @@ unsigned int ui_vao;
 unsigned int font_instance_vbo;
 unsigned int ui_vbo;
 
-void new_text_instance_list(TextInstanceList *list, uint capacity) {
+void new_glyph_instance_list(GlyphInstanceList *list, uint capacity) {
   list->size = 0;
   list->capacity = capacity;
   list->data = malloc(list->capacity * sizeof(TextInstance));
 }
 
-void clear_text_instance_list(TextInstanceList *list) {
+void clear_glyph_instance_list(GlyphInstanceList *list) {
   list->size = 0;
   memset(list->data, 0, list->size * sizeof(TextInstance));
 }
 
-void add_text_instance(TextInstanceList *list, TextInstance instance) {
+void add_glyph_instance(GlyphInstanceList *list, TextInstance instance) {
   if (list->size >= list->capacity) {
     list->capacity *= 2;
     TextInstance* temp = realloc(list->data, list->capacity * sizeof(TextInstance));
     if (!temp) {
-      printf("[FATAL] Failed to reallocate memory for text instance list\n");
+      printf("[FATAL] Failed to reallocate memory for glyph instance list\n");
       exit(1);
     }
     list->data = temp;
@@ -178,7 +178,6 @@ int init_ui(const char* font_path, Size window_size) {
 
   zephr_context.window_size = window_size;
   zephr_context.projection = orthographic_projection_2d(0.f, window_size.width, window_size.height, 0.f);
-  new_text_instance_list(&zephr_context.texts, 16);
 
   int res = init_fonts(font_path);
   if (res == -1) {
@@ -354,25 +353,6 @@ bool zephr_should_quit() {
 
 
   return zephr_context.should_quit;
-}
-
-/* This MUST be called at the end of the frame
- if you wish to draw text */
-void zephr_batch_text_draw() {
-  use_shader(font_shader);
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, zephr_context.font.atlas_texture_id);
-  glBindVertexArray(font_vao);
-
-  glBindBuffer(GL_ARRAY_BUFFER, font_instance_vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(TextInstance) * zephr_context.texts.size, zephr_context.texts.data, GL_DYNAMIC_DRAW);
-
-  glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL, zephr_context.texts.size);
-
-  glBindVertexArray(0);
-  glBindTexture(GL_TEXTURE_2D, 0);
-
-  clear_text_instance_list(&zephr_context.texts);
 }
 
 // This MUST be called at the end of the frame
@@ -676,6 +656,9 @@ void draw_text(const char* text, int font_size, UIConstraints constraints, const
 
   float first_char_bearing_w = zephr_context.font.characters[(int)text[0]].bearing.width;
 
+  GlyphInstanceList glyph_instance_list;
+  new_glyph_instance_list(&glyph_instance_list, 16);
+
   // we use the original text and character sizes in the loop and then we just
   // scale up or down the model matrix to get the desired font size.
   // this way everything works out fine and we get to transform the text using the
@@ -698,11 +681,25 @@ void draw_text(const char* text, int font_size, UIConstraints constraints, const
 
     memcpy(instance.model, model.m, sizeof(float[4][4]));
     
-    add_text_instance(&zephr_context.texts, instance);
+    add_glyph_instance(&glyph_instance_list, instance);
 
     x += (ch.advance >> 6); 
     c++;
   }
+
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, zephr_context.font.atlas_texture_id);
+  glBindVertexArray(font_vao);
+
+  glBindBuffer(GL_ARRAY_BUFFER, font_instance_vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(TextInstance) * glyph_instance_list.size, glyph_instance_list.data, GL_DYNAMIC_DRAW);
+
+  glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL, glyph_instance_list.size);
+
+  glBindVertexArray(0);
+  glBindTexture(GL_TEXTURE_2D, 0);
+
+  free(glyph_instance_list.data);
 }
 
 /* enum Element { */
