@@ -8,9 +8,10 @@
 #include "3rdparty/stb/stb_image.h"
 
 #include "cudoku.h"
-#include "shader.h"
 #include "audio.h"
 #include "ui.h"
+#include "text.h"
+#include "zephr.h"
 
 #define HELP_TEXT_SIZE 13
 
@@ -195,18 +196,6 @@ void draw_bg_grid_texture(Shader shader, unsigned int vao, unsigned int texture,
   glBindVertexArray(vao);
   glBindTexture(GL_TEXTURE_2D, texture);
   glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-  glBindVertexArray(0);
-}
-
-void draw_numbers(Shader shader, unsigned int vao, unsigned int vbo, float *transform, Cell board[9][9]) {
-  for (int i = 0; i < 9; i++) {
-    for (int j = 0; j < 9; j++) {
-      if (board[i][j].value != 0) {
-        /* draw_number(shader, board[i][j], i, j, 5.0f, vao, vbo, transform); */
-      }
-    }
-  }
 
   glBindVertexArray(0);
 }

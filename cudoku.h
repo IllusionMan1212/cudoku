@@ -2,7 +2,6 @@
 
 #include <stdbool.h>
 
-#include "helper.h"
 #include "shader.h"
 #include "timer.h"
 #include "ui.h"
@@ -25,12 +24,7 @@ typedef struct Cudoku {
   float win_time;
 } Cudoku;
 
-void set_scale_factor(int width, int height, float *x, float *y);
-unsigned int prepare_bg(bool use_texture, unsigned int *texture);
-void draw_bg_grid_shader(Shader shader, unsigned int vao, float* transform, float resolution);
 void draw_bg_grid_texture(Shader shader, unsigned int vao, unsigned int texture, float* transform);
-void draw_numbers(Shader shader, unsigned int vao, unsigned int vbo, float *transform, Cell board[9][9]);
-void draw_win_overlay(Shader win_shader, Shader font_shader, unsigned int vao, unsigned int font_vao, unsigned int font_vbo, float *transform, Cudoku *game);
 void prepare_selection_box(unsigned int *vao, unsigned int *vbo);
 void draw_selection_box(Shader shader, unsigned int vao, unsigned int vbo, int x, int y, float *transform, Color color);
 void highlight_mistakes(Shader shader, unsigned int vao, unsigned vbo, float *transform, Cudoku *game);

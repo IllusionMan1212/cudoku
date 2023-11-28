@@ -3,42 +3,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include "z_math.h"
-
-typedef struct Character {
-  Size size;
-  Size bearing;
-  unsigned int advance;
-  Vec2f tex_coords[4]; // the 4 corners of the character quad
-} Character;
-
-typedef struct ZephFont {
-  Character characters[128];
-  unsigned int atlas_texture_id;
-} ZephFont;
-
-typedef struct TextInstance {
-  Vec4f position;
-  int tex_coords_index;
-  Color color;
-  float model[4][4];
-} TextInstance;
-
-typedef struct GlyphInstanceList {
-  TextInstance *data;
-  int size;
-  int capacity;
-} GlyphInstanceList;
-
-typedef struct Context {
-  bool should_quit;
-  Color clear_color;
-  Size screen_size;
-  Size window_size;
-  ZephFont font;
-
-  Matrix4x4 projection;
-} Context;
+#include "zephr_math.h"
 
 typedef enum Alignment {
   ALIGN_TOP_LEFT,
@@ -67,20 +32,14 @@ typedef struct UIConstraints {
   float rotation;
 } UIConstraints;
 
-int init_zephr(const char* font_path, const char* window_title, Size window_size, Color *clear_color);
-void deinit_zephr();
-void make_window_non_resizable();
-bool zephr_should_quit();
-void zephr_swap_buffers();
-Size zephr_get_window_size();
-void zephr_batch_text_draw();
+int init_ui(const char* font_path, Size window_size);
 void set_x_constraint(UIConstraints *constraints, float value, UIConstraint type);
 void set_y_constraint(UIConstraints *constraints, float value, UIConstraint type);
 void set_width_constraint(UIConstraints *constraints, float value, UIConstraint type);
 void set_height_constraint(UIConstraints *constraints, float value, UIConstraint type);
 void set_rotation_constraint(UIConstraints *constraints, float angle_d);
+void apply_constraints(UIConstraints constraints, Vec2f *pos, Sizef *size);
+void apply_alignment(Alignment align, Vec2f *pos, Sizef size);
 void draw_quad(UIConstraints constraints, const Color *color, float border_radius, Alignment align);
 void draw_circle(UIConstraints constraints, const Color *color, Alignment align);
 void draw_triangle(UIConstraints constraints, const Color *color, Alignment align);
-void draw_text(const char* text, int font_size, UIConstraints constraints, const Color *color, Alignment align);
-Sizef calculate_text_size(const char *text, int font_size);

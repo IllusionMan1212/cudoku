@@ -7,8 +7,8 @@
 #include <stb_image.h>
 
 #include "cudoku.h"
-#include "ui.h"
 #include "audio.h"
+#include "zephr.h"
 
 #define DEBUG 1
 
@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
     printf("[ERROR]: could not initialize zephr\n");
     return 1;
   }
-  make_window_non_resizable();
+  zephr_make_window_non_resizable();
 
   srand(time(NULL));
 
@@ -184,7 +184,6 @@ int main(int argc, char *argv[]) {
   /*   /1*       width = xce.width; *1/ */
   /*   /1*       height = xce.height; *1/ */
   /*   /1*       resize_x11_window(display, window); *1/ */
-  /*   /1*       set_scale_factor(xce.width, xce.height, &x_scale, &y_scale); *1/ */
   /*   /1*     } *1/ */
 
   /*   /1*   } else if (xev.type == KeyPress) { *1/ */
@@ -216,8 +215,6 @@ int main(int argc, char *argv[]) {
   /*         game.selection.y, */
   /*         (float *)transform, */
   /*         selection_color); */
-
-  /*   /1* draw_numbers(font_shader, font_vao, font_vbo, (float *)transform, game.board); *1/ */
 
   /*   /1* if (game.should_highlight_mistakes) { *1/ */
   /*   /1*   highlight_mistakes(selection_shader, selection_vao, selection_vbo, (float *)transform, &game); *1/ */
