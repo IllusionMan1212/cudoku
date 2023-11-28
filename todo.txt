@@ -1,7 +1,8 @@
+zephr stuff
 - "premade" (but also customizable) ui elements (buttons, text boxes, etc) with instanced rendering
 - border decorations for shapes (maybe. or maybe only for ui elements)
 - some kind of ui layout/hierarchy system (for later, when we actually need it)
-- grid texture (draw_image? or draw_texture? func)
+- texture func (draw_image? or draw_texture? func)
 
 text rendering improvements
   - [ ] unicode support (allows for non-ascii characters)
