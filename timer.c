@@ -14,30 +14,42 @@ void start_internal_timer() {
 }
 
 bool timer_ended(Timer *timer) {
-  if (!timer->is_running) return false;
+  if (timer->state == TIMER_STOPPED) return false;
 
-  return get_time() - timer->time >= timer->duration;
+  return get_time() - timer->start >= timer->duration;
 }
 
 void timer_start(Timer *timer, float duration) {
-  timer->time = get_time();
+  timer->start = get_time();
+  timer->elapsed = 0;
   timer->duration = duration;
-  timer->is_running = true;
+  timer->state = TIMER_RUNNING;
 }
 
 void timer_stop(Timer *timer) {
-  timer->is_running = false;
+  timer->state = TIMER_STOPPED;
 }
 
 void timer_reset(Timer *timer) {
-  timer->time = get_time();
-  timer->is_running = true;
+  timer->start = get_time();
+  timer->elapsed = 0;
+  timer->state = TIMER_RUNNING;
 }
 
 float timer_remaining(Timer *timer) {
-  return timer->duration - (get_time() - timer->time);
+  return timer->duration - (get_time() - timer->start);
 }
 
 float timer_elapsed(Timer *timer) {
-  return get_time() - timer->time;
+  return get_time() - timer->start + timer->elapsed;
+}
+
+void timer_pause(Timer *timer) {
+  timer->state = TIMER_PAUSED;
+  timer->elapsed = get_time() - timer->start + timer->elapsed;
+}
+
+void timer_resume(Timer *timer) {
+  timer->state = TIMER_RUNNING;
+  timer->start = get_time();
 }

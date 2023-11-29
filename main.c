@@ -74,8 +74,8 @@ void handle_keypress(XEvent xev, Cudoku *game) {
     generate_random_board(game);
   } else if (XLookupKeysym(&xev.xkey, 0) == XK_c) {
     toggle_check(game);
-  /* } else if (XLookupKeysym(&xev.xkey, 0) == XK_p) { */
-  /*   pause(&game); */
+  } else if (XLookupKeysym(&xev.xkey, 0) == XK_p) {
+    pause_game(game);
   } else if (XLookupKeysym(&xev.xkey, 0) == XK_F1) {
     if (!toggle_help(game)) {
       timer_stop(&game->help_timer);
@@ -172,6 +172,10 @@ int main(int argc, char *argv[]) {
 
     if (game.has_won) {
       draw_win(&game);
+    }
+
+    if (game.timer.state == TIMER_PAUSED) {
+      draw_pause_overlay();
     }
 
     zephr_swap_buffers();

@@ -38,3 +38,5 @@ void draw_help(Timer *timer);
 void draw_timer(Timer *timer);
 void draw_win(Cudoku *game);
 void draw_board(Cudoku *game, Size window_size);
+void pause_game(Cudoku *game);
+void draw_pause_overlay();
