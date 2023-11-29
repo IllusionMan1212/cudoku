@@ -283,7 +283,7 @@ Sizef calculate_text_size(const char *text, int font_size) {
 
 void draw_text(const char* text, int font_size, UIConstraints constraints, const Color *color, Alignment alignment) {
   use_shader(font_shader);
-  Color text_color = { 0 };
+  Color text_color = { 0, 0, 0, 1.f };
   if (color) {
     text_color = (Color){ color->r / 255.f, color->g / 255.f, color->b / 255.f, color->a / 255.f };
   }

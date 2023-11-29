@@ -5,18 +5,16 @@
 #include <X11/Xatom.h>
 #include <glad/glx.h>
 
-static bool fullscreen = false;
-
 Colormap colormap;
 GLXContext glx_context;
 
-void resize_x11_window(Display *display, Window window) {
+void x11_resize_window(Display *display, Window window) {
   XWindowAttributes win_attrs;
   XGetWindowAttributes(display, window, &win_attrs);
   glViewport(0, 0, win_attrs.width, win_attrs.height);
 }
 
-int init_x11(Display **display, Window *window, const char* title, int window_width, int window_height) {
+int x11_init(Display **display, Window *window, const char* title, int window_width, int window_height) {
   *display = XOpenDisplay(NULL);
 
   if (display == NULL) {
@@ -109,14 +107,14 @@ int init_x11(Display **display, Window *window, const char* title, int window_wi
   glEnable(GL_MULTISAMPLE);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glViewport(0, 0, win_attrs.width, win_attrs.height);
-  resize_x11_window(*display, *window);
+  x11_resize_window(*display, *window);
 
   XFree(fbc);
 
   return 0;
 }
 
-void close_x11(Display **display, Window *window) {
+void x11_close(Display **display, Window *window) {
   glXMakeCurrent(*display, 0, 0);
   glXDestroyContext(*display, glx_context);
 
@@ -161,17 +159,15 @@ void return_fullscreen(Display *display, Window window)
     SubstructureNotifyMask | SubstructureRedirectMask, &xev);
 }
 
-void toggle_fullscreen(Display *display, Window window) {
+void x11_toggle_fullscreen(bool fullscreen, Display *display, Window window) {
   if (fullscreen) {
     return_fullscreen(display, window);
   } else {
     go_fullscreen(display, window);
   }
-
-  fullscreen = !fullscreen;
 }
 
-void get_screen_size(Display *display, int *width, int *height) {
+void x11_get_screen_size(Display *display, int *width, int *height) {
   Screen *screen = DefaultScreenOfDisplay(display);
 
   *width = screen->width;

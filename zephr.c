@@ -21,7 +21,7 @@ int init_zephr(const char* font_path, const char* window_title, Size window_size
     return 1;
   }
 
-  res = init_x11(&display, &window, window_title, window_size.width, window_size.height);
+  res = x11_init(&display, &window, window_title, window_size.width, window_size.height);
   if (res < 0) return 1;
 
   res = init_ui(font_path, (Size){ .width = window_size.width, .height = window_size.height });
@@ -36,21 +36,20 @@ int init_zephr(const char* font_path, const char* window_title, Size window_size
     zephr_context.clear_color = (Color){0.0, 0.0, 0.0, 1.0};
   }
 
-  get_screen_size(display, &zephr_context.screen_size.width, &zephr_context.screen_size.height);
+  x11_get_screen_size(display, &zephr_context.screen_size.width, &zephr_context.screen_size.height);
   start_internal_timer();
 
   return 0;
 }
 
 void deinit_zephr() {
-  close_x11(&display, &window);
+  x11_close(&display, &window);
   audio_close();
 }
 
 bool zephr_should_quit() {
   // TODO: input events
   // TODO: window events
-  // TODO: ui update??
 
   while (XPending(display)) {
     XEvent xev;
@@ -59,26 +58,11 @@ bool zephr_should_quit() {
     if (xev.type == ConfigureNotify) {
       XConfigureEvent xce = xev.xconfigure;
 
-      if (xce.width != zephr_context.window_size.width || xce.height != zephr_context.window_size.height) {
-        zephr_context.window_size = (Size){ .width = xce.width, .height = xce.height };
+      if (xce.width != zephr_context.window.size.width || xce.height != zephr_context.window.size.height) {
+        zephr_context.window.size = (Size){ .width = xce.width, .height = xce.height };
         zephr_context.projection = orthographic_projection_2d(0.f, xce.width, xce.height, 0.f);
-        resize_x11_window(display, window);
+        x11_resize_window(display, window);
       }
-
-    } else if (xev.type == KeyPress) {
-      if (XLookupKeysym(&xev.xkey, 0) == XK_Escape ||
-          (XLookupKeysym(&xev.xkey, 0) == XK_q && xev.xkey.state & ControlMask)) {
-        zephr_context.should_quit = true;
-        break;
-      } else {
-        /* handle_keypress(xev, &game); */
-      }
-    } else if (xev.type == ButtonPress) {
-      /* if (xev.xbutton.button == Button1) { */
-      /*   int x = xev.xbutton.x; */
-      /*   int y = xev.xbutton.y; */
-      /*   do_selection(&game, x, y, width, height, x_scale, y_scale); */
-      /* } */
     }
   }
 
@@ -89,9 +73,7 @@ bool zephr_should_quit() {
   glClearColor(r, g, b, a);
   glClear(GL_COLOR_BUFFER_BIT);
 
-  /* update_ui(); */
   audio_update();
-
 
   return zephr_context.should_quit;
 }
@@ -102,10 +84,20 @@ void zephr_swap_buffers() {
 }
 
 Size zephr_get_window_size() {
-  return zephr_context.window_size;
+  return zephr_context.window.size;
 }
 
-// Has to be called after calling init_zephr()
+// This MUST be called after calling init_zephr()
 void zephr_make_window_non_resizable() {
-  x11_make_window_non_resizable(display, window, zephr_context.window_size.width, zephr_context.window_size.height);
+  x11_make_window_non_resizable(display, window, zephr_context.window.size.width, zephr_context.window.size.height);
+}
+
+void zephr_toggle_fullscreen() {
+  x11_toggle_fullscreen(zephr_context.window.is_fullscreen, display, window);
+
+  zephr_context.window.is_fullscreen = !zephr_context.window.is_fullscreen;
+}
+
+void zephr_quit() {
+  zephr_context.should_quit = true;
 }

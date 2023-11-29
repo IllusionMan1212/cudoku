@@ -24,12 +24,10 @@ typedef struct Cudoku {
   float win_time;
 } Cudoku;
 
-void draw_bg_grid_texture(Shader shader, unsigned int vao, unsigned int texture, float* transform);
-void prepare_selection_box(unsigned int *vao, unsigned int *vbo);
-void draw_selection_box(Shader shader, unsigned int vao, unsigned int vbo, int x, int y, float *transform, Color color);
-void highlight_mistakes(Shader shader, unsigned int vao, unsigned vbo, float *transform, Cudoku *game);
+void draw_selection_box(int x, int y, const Color color);
+void highlight_mistakes(Cudoku *game);
 void toggle_check(Cudoku *game);
-void do_selection(Cudoku *game, int x, int y, int width, int height, float x_scale, float y_scale);
+void do_selection(Cudoku *game, int x, int y);
 void set_selected_number(Cudoku *game, int number);
 void move_selection(Cudoku *game, int x, int y);
 void toggle_selection(Cudoku *game);
