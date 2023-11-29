@@ -13,28 +13,15 @@
 #include "text.h"
 #include "zephr.h"
 
-#define HELP_TEXT_SIZE 13
+#define HELP_TEXT_SIZE 12
 
-static const float quad_vertices[] = {
-  // positions     // texture coords
-  -1.0f, 1.0f, 0.0f, 0.0f, 1.0f,  // top left
-   1.0f, 1.0f, 0.0f, 1.0f, 1.0f, // top right 
-  -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, // bottom left
-   1.0f, -1.0f, 0.0f, 1.0f, 0.0f // bottom right
-};
-
-static const int quad_indices[] = {
-  0, 1, 2,
-  1, 2, 3
-};
-
-static const Color mistake_color = {1.f, 0.f, 0.f, 0.5f};
+static const Color mistake_color = {255.f, 0.f, 0.f, 127};
+static const Color selection_color = {102, 102, 255, 255};
 
 static const char *win_text = "You won!";
 
 static const char *help_texts[HELP_TEXT_SIZE] = {
   "F1 - Toggle help",
-  "F11 - Toggle fullscreen",
   "1-9 - Set number",
   "0/Del/Backspace - Remove number",
   "Left/A/H - Move selection left",
@@ -77,7 +64,6 @@ void draw_win(Cudoku *game) {
 
 void draw_board(Cudoku *game, Size window_size) {
   Color bg_color = {240.0f, 235.0f, 227.0f, 255.f};
-  Color color = {0.0f, 0.0f, 0.0f, 255.f};
   Size cell_size = {window_size.width / 9, window_size.height / 9};
   UIConstraints constraints = {0};
   set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
@@ -96,7 +82,7 @@ void draw_board(Cudoku *game, Size window_size) {
       set_width_constraint(&constraints, 2, UI_CONSTRAINT_FIXED);
     }
     set_height_constraint(&constraints, window_size.height, UI_CONSTRAINT_FIXED);
-    draw_quad(constraints, &color, 0.0, ALIGN_TOP_LEFT);
+    draw_quad(constraints, NULL, 0.0, ALIGN_TOP_LEFT);
 
     set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
     set_y_constraint(&constraints, i * 100, UI_CONSTRAINT_FIXED);
@@ -106,7 +92,7 @@ void draw_board(Cudoku *game, Size window_size) {
     } else {
       set_height_constraint(&constraints, 2, UI_CONSTRAINT_FIXED);
     }
-    draw_quad(constraints, &color, 0.0, ALIGN_TOP_LEFT);
+    draw_quad(constraints, NULL, 0.0, ALIGN_TOP_LEFT);
   }
 
   set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
@@ -124,80 +110,13 @@ void draw_board(Cudoku *game, Size window_size) {
       Sizef text_size = calculate_text_size(num, 72.f);
       set_y_constraint(&constraints, i * 100 + cell_size.height / 2.f - text_size.height / 2.f, UI_CONSTRAINT_FIXED);
       set_x_constraint(&constraints, j * 100 + cell_size.width / 2.f - text_size.width / 2.f, UI_CONSTRAINT_FIXED);
-      draw_text(num, 72.f, constraints, &color, ALIGN_TOP_LEFT);
+      if (game->board[i][j].is_locked) {
+        draw_text(num, 72.f, constraints, NULL, ALIGN_TOP_LEFT);
+      } else {
+        draw_text(num, 72.f, constraints, &selection_color, ALIGN_TOP_LEFT);
+      }
     }
   }
-}
-
-unsigned int prepare_bg(bool use_texture, unsigned int *texture) {
-  unsigned int vbo, vao, ebo;
-  glGenVertexArrays(1, &vao);
-  glGenBuffers(1, &vbo);
-  glGenBuffers(1, &ebo);
-
-  glBindVertexArray(vao);
-
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), quad_vertices, GL_STATIC_DRAW);
-
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quad_indices), quad_indices, GL_STATIC_DRAW);
-
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
-
-  if (use_texture) {
-    int tex_width = 0, tex_height = 0;
-    unsigned char *tex_data = NULL;
-
-    glGenTextures(1, &(*texture));
-    glBindTexture(GL_TEXTURE_2D, *texture);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    tex_data = stbi_load("assets/sudoku-grid.png", &tex_width, &tex_height, NULL, 0);
-    if (tex_data) {
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex_width, tex_height, 0, GL_RGB, GL_UNSIGNED_BYTE, tex_data);
-      glGenerateMipmap(GL_TEXTURE_2D);
-
-      stbi_image_free(tex_data);
-    } else {
-      printf("[ERROR] could not load texture image\n");
-    }
-
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
-  }
-
-  glBindVertexArray(0);
-
-  return vao;
-}
-
-void draw_bg_grid_shader(Shader shader, unsigned int vao, float* transform, float resolution) {
-  use_shader(shader);
-
-  set_mat4f(shader, "transform", transform);
-  set_float(shader, "resolution", resolution);
-
-  glBindVertexArray(vao);
-  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-  glBindVertexArray(0);
-}
-
-void draw_bg_grid_texture(Shader shader, unsigned int vao, unsigned int texture, float* transform) {
-  use_shader(shader);
-  set_mat4f(shader, "transform", transform);
-
-  glBindVertexArray(vao);
-  glBindTexture(GL_TEXTURE_2D, texture);
-  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-  glBindVertexArray(0);
 }
 
 /* void draw_pause_overlay(Cudoku *game) { */
@@ -214,90 +133,52 @@ void draw_bg_grid_texture(Shader shader, unsigned int vao, unsigned int texture,
 /*   // example of drawing text */
 /*   draw_text_at(pause_text, font_scale, posx, posy, color); */
 
-/*   // TODO: rotations, translation, scaling */
 /*   // TODO: buttons and other elements */
 /* } */
 
-void prepare_selection_box(unsigned int *vao, unsigned int *vbo) {
-  glGenVertexArrays(1, &(*vao));
-  glGenBuffers(1, &(*vbo));
+void draw_selection_box(int x, int y, const Color color) {
+  UIConstraints constraints = {0};
+  set_x_constraint(&constraints, x * 100, UI_CONSTRAINT_FIXED);
+  set_y_constraint(&constraints, y * 100, UI_CONSTRAINT_FIXED);
+  set_width_constraint(&constraints, 100, UI_CONSTRAINT_FIXED);
+  set_height_constraint(&constraints, 100, UI_CONSTRAINT_FIXED);
 
-  glBindVertexArray(*vao);
-  glBindBuffer(GL_ARRAY_BUFFER, *vbo);
-
-  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6*2, NULL, GL_DYNAMIC_DRAW);
-
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), 0);
-
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-  glBindVertexArray(0);
+  draw_quad(constraints, &color, 0.0, ALIGN_TOP_LEFT);
 }
 
-
-void draw_selection_box(Shader shader, unsigned int vao, unsigned int vbo, int x, int y, float *transform, Color color) {
-  use_shader(shader);
-
-  set_mat4f(shader, "transform", transform);
-  set_vec4f(shader, "aColor", color.r, color.g, color.b, color.a);
-
-  glBindVertexArray(vao);
-
-  float vert = 0.11f;
-  // get size of a single cell in opengl coords (-1, 1)
-  float single_cell = (1.f/9.f) * 2;
-  // we minus 4 since we start at column and row 4 (0-indexed)
-  float offset_x = single_cell * (y - 4);
-  float offset_y = single_cell * (x - 4);
-
-  float vertices[6][2] = {
-    // top left tri
-    { -vert + offset_x, -vert - offset_y },
-    { -vert + offset_x,  vert - offset_y },
-    {  vert + offset_x,  vert - offset_y },
-
-    // bottom right tri
-    { -vert + offset_x, -vert - offset_y },
-    {  vert + offset_x,  vert - offset_y },
-    {  vert + offset_x, -vert - offset_y }
-  };
-
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-  glDrawArrays(GL_TRIANGLES, 0, 6);
-
-  glBindVertexArray(0);
-}
-
-void highlight_mistakes(Shader shader, unsigned int vao, unsigned vbo, float *transform, Cudoku *game) {
+void highlight_mistakes(Cudoku *game) {
   for (int i = 0; i < 9; i++) {
     for (int j = 0; j < 9; j++) {
       Cell cell = game->board[i][j];
       if (cell.value != 0 && cell.value != game->solution[i][j]) {
-        draw_selection_box(shader, vao, vbo, i, j, transform, mistake_color);
+        draw_selection_box(j, i, mistake_color);
       }
     }
   }
+
+  UIConstraints constraints = {0};
+
+  const int font_size = 24;
+  const char *text = "Mistake highlighter is ON";
+  Sizef text_size = calculate_text_size(text, font_size);
+  set_width_constraint(&constraints, text_size.width, UI_CONSTRAINT_FIXED);
+  set_height_constraint(&constraints, text_size.height, UI_CONSTRAINT_FIXED);
+  draw_quad(constraints, &(Color){0, 0, 0, 30}, 0.0, ALIGN_BOTTOM_LEFT);
+
+  set_width_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
+  set_height_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
+  draw_text(text, font_size, constraints, &(Color){255, 0, 0, 255}, ALIGN_BOTTOM_LEFT);
 }
 
 void toggle_check(Cudoku *game) {
   game->should_highlight_mistakes = !game->should_highlight_mistakes;
 }
 
-void do_selection(Cudoku *game, int x, int y, int width, int height, float x_scale, float y_scale) {
+void do_selection(Cudoku *game, int x, int y) {
   if (game->has_won) return;
 
-  float board_x_start = (width / 2.f) - ((width * x_scale) / 2);
-  float board_y_start = (height / 2.f) - ((height * y_scale) / 2);
-
-  float cell_width = (width * x_scale) / 9.f;
-  float cell_height = (height * y_scale) / 9.f;
-
-
-  int cell_x = floor((x - board_x_start) / cell_width);
-  int cell_y = floor((y - board_y_start) / cell_height);
+  int cell_x = floor(x / 100.f);
+  int cell_y = floor(y / 100.f);
 
   if (cell_x < 0 || cell_x > 8 || cell_y < 0 || cell_y > 8) {
     game->should_draw_selection = false;

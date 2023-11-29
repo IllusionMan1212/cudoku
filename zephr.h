@@ -4,11 +4,16 @@
 
 #include "text.h"
 
+typedef struct ZephWindow {
+  Size size;
+  bool is_fullscreen;
+} ZephWindow;
+
 typedef struct Context {
   bool should_quit;
   Color clear_color;
   Size screen_size;
-  Size window_size;
+  ZephWindow window;
   ZephFont font;
 
   Matrix4x4 projection;
@@ -20,3 +25,5 @@ bool zephr_should_quit();
 void zephr_swap_buffers();
 Size zephr_get_window_size();
 void zephr_make_window_non_resizable();
+void zephr_toggle_fullscreen();
+void zephr_quit();

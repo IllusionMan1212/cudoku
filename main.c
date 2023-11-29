@@ -12,13 +12,13 @@
 
 #define DEBUG 1
 
+extern Display *display;
 const char *font_path = "assets/fonts/Rubik/Rubik-VariableFont_wght.ttf";
 const char *title = "Cudoku";
 
 void usage() {
   printf("Usage: cudoku [OPTION]\n\n");
   printf("  %-20s%-20s", "-h, --help", "prints this help message\n");
-  printf("  %-20s%-20s", "--use-texture", "use a texture instead of generating the grid using shaders\n");
   printf("  %-20s%-20s", "-f, --font FONT", "use a custom font file to render text\n");
 }
 
@@ -72,12 +72,10 @@ void handle_keypress(XEvent xev, Cudoku *game) {
     toggle_selection(game);
   } else if (XLookupKeysym(&xev.xkey, 0) == XK_n) {
     generate_random_board(game);
-  } else if (XLookupKeysym(&xev.xkey, 0) == XK_F11) {
-    /* toggle_fullscreen(display, window); */
   } else if (XLookupKeysym(&xev.xkey, 0) == XK_c) {
     toggle_check(game);
-  /* } else if (XLookupKeysym(&xev.xkey, 0) == XK_m) { */
-  /*   toggle_mute(&game); */
+  /* } else if (XLookupKeysym(&xev.xkey, 0) == XK_p) { */
+  /*   pause(&game); */
   } else if (XLookupKeysym(&xev.xkey, 0) == XK_F1) {
     if (!toggle_help(game)) {
       timer_stop(&game->help_timer);
@@ -86,8 +84,6 @@ void handle_keypress(XEvent xev, Cudoku *game) {
 }
 
 int main(int argc, char *argv[]) {
-  bool use_texture = false;
-
   if (argc > 1) {
     char *flag = argv[1];
     if (strcmp(flag, "-h") == 0 || strcmp(flag, "--help") == 0) {
@@ -103,15 +99,7 @@ int main(int argc, char *argv[]) {
           font_path = argv[i + 1];
           i++;
         } else {
-          printf("[ERROR]: used font flag with no provided font, defaulting to Rubik\n");
-        }
-      } else if (strcmp(flag, "--use-texture") == 0) {
-        FILE *fp = fopen("assets/sudoku-grid.png", "r");
-        if (fp == NULL) {
-          printf("[ERROR]: could not open board texture, falling back to shader grid\n");
-        } else {
-          fclose(fp);
-          use_texture = true;
+          printf("[WARN]: Used font flag with no provided font, defaulting to Rubik\n");
         }
       }
     }
@@ -132,29 +120,46 @@ int main(int argc, char *argv[]) {
   game.should_draw_help = true;
   generate_random_board(&game);
 
-  Shader grid_shader;
-  if (use_texture)
-    grid_shader = create_shader("shaders/board_v.vert", "shaders/board_f.frag");
- 
-  /* Shader selection_shader = create_shader("shaders/board_v.vert", "shaders/quad.frag"); */
-  unsigned int selection_vao, selection_vbo;
-  Color selection_color = {0.4f, 0.4f, 1.0f, 0.5f};
-  prepare_selection_box(&selection_vao, &selection_vbo);
-
-  float delta_t, last_t = 0.0;
   timer_start(&game.help_timer, 5.0f);
   timer_start(&game.timer, 0.0f);
 
   while (!zephr_should_quit()) {
-    float now = get_time();
-    delta_t = now - last_t;
-    last_t = now;
+    while (XPending(display)) {
+      XEvent xev;
+      XNextEvent(display, &xev);
 
-    if (!use_texture) {
-      draw_board(&game, window_size);
+      if (xev.type == KeyPress) {
+        if (XLookupKeysym(&xev.xkey, 0) == XK_Escape ||
+            (XLookupKeysym(&xev.xkey, 0) == XK_q && xev.xkey.state & ControlMask)) {
+          zephr_quit();
+          break;
+        } else {
+          handle_keypress(xev, &game);
+        }
+      } else if (xev.type == ButtonPress) {
+        if (xev.xbutton.button == Button1) {
+          int x = xev.xbutton.x;
+          int y = xev.xbutton.y;
+          do_selection(&game, x, y);
+        }
+      }
     }
 
+    // TODO: how do I want the input handling to look like
+    //zephr_poll_events();?
+    //for event in zephr_events()??
+    //
+
+    draw_board(&game, window_size);
     draw_timer(&game.timer);
+
+    if (game.should_draw_selection) {
+      draw_selection_box(game.selection.y, game.selection.x, (Color){102, 102, 255, 127});
+    }
+
+    if (game.should_highlight_mistakes) {
+      highlight_mistakes(&game);
+    }
 
     if (timer_ended(&game.help_timer)) {
       timer_stop(&game.help_timer);
@@ -171,64 +176,6 @@ int main(int argc, char *argv[]) {
 
     zephr_swap_buffers();
   }
-  /* while (!quit) { */
-
-  /*   /1* while (XPending(display)) { *1/ */
-  /*   /1*   XEvent xev; *1/ */
-  /*   /1*   XNextEvent(display, &xev); *1/ */
-
-  /*   /1*   if (xev.type == ConfigureNotify) { *1/ */
-  /*   /1*     XConfigureEvent xce = xev.xconfigure; *1/ */
-
-  /*   /1*     if (xce.width != width || xce.height != height) { *1/ */
-  /*   /1*       width = xce.width; *1/ */
-  /*   /1*       height = xce.height; *1/ */
-  /*   /1*       resize_x11_window(display, window); *1/ */
-  /*   /1*     } *1/ */
-
-  /*   /1*   } else if (xev.type == KeyPress) { *1/ */
-  /*   /1*     if (XLookupKeysym(&xev.xkey, 0) == XK_Escape || *1/ */
-  /*   /1*         (XLookupKeysym(&xev.xkey, 0) == XK_q && xev.xkey.state & ControlMask)) { *1/ */
-  /*   /1*       quit = true; *1/ */
-  /*   /1*       break; *1/ */
-  /*   /1*     } else { *1/ */
-  /*   /1*       handle_keypress(xev, &game); *1/ */
-  /*   /1*     } *1/ */
-  /*   /1*   } else if (xev.type == ButtonPress) { *1/ */
-  /*   /1*     if (xev.xbutton.button == Button1) { *1/ */
-  /*   /1*       int x = xev.xbutton.x; *1/ */
-  /*   /1*       int y = xev.xbutton.y; *1/ */
-  /*   /1*       do_selection(&game, x, y, width, height, x_scale, y_scale); *1/ */
-  /*   /1*     } *1/ */
-  /*   /1*   } *1/ */
-  /*   /1* } *1/ */
-
-  /*   /1* if (use_texture) *1/ */
-  /*   /1*   draw_bg_grid_texture(grid_shader, board_vao, grid_texture, (float *)transform); *1/ */
-
-  /*   if (game.should_draw_selection) */
-  /*     draw_selection_box( */
-  /*         selection_shader, */
-  /*         selection_vao, */
-  /*         selection_vbo, */
-  /*         game.selection.x, */
-  /*         game.selection.y, */
-  /*         (float *)transform, */
-  /*         selection_color); */
-
-  /*   /1* if (game.should_highlight_mistakes) { *1/ */
-  /*   /1*   highlight_mistakes(selection_shader, selection_vao, selection_vbo, (float *)transform, &game); *1/ */
-
-  /*   /1*   char* text = "Mistake highlighter is ON"; *1/ */
-  /*   /1*   float text_scale = 0.2; *1/ */
-  /*   /1*   Size text_size = calculate_text_size(text, text_scale); *1/ */
-  /*   /1*   Vec2 text_pos = { 0.0f, text_size.height - 10.f }; *1/ */
-  /*   /1*   Color text_color = { 200.0f, 50.0f, 50.0f, 1.0f }; *1/ */
-  /*   /1*   draw_text_at(font_shader, text, text_pos, text_scale, font_vao, font_vbo, (float *)projection.m, &text_color); *1/ */
-  /*   /1* } *1/ */
-
-  /*   /1* glXSwapBuffers(display, window); *1/ */
-  /* } */
 
   deinit_zephr();
 
