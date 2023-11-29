@@ -13,7 +13,7 @@
 #include "text.h"
 #include "zephr.h"
 
-#define HELP_TEXT_SIZE 12
+#define HELP_TEXT_SIZE 13
 
 static const Color mistake_color = {255.f, 0.f, 0.f, 127};
 static const Color selection_color = {102, 102, 255, 255};
@@ -32,17 +32,18 @@ static const char *help_texts[HELP_TEXT_SIZE] = {
   "N - New board",
   "C - Check for mistakes",
   "R - Reset board",
+  "P - Pause/Resume",
   "Ctrl+Q/Esc - Quit"
 };
 
 void draw_win(Cudoku *game) {
   Size window = zephr_get_window_size();
-  Color bg_color = {0, 0, 0, 180.f};
+  Color bg_color = {0, 0, 0, 200.f};
   Color text_color = {237.f, 225.f, 215.f, 255.f};
 
   char time_text[64];
 
-  float time_elapsed = game->win_time - game->timer.time;
+  float time_elapsed = game->win_time - game->timer.start + game->timer.elapsed;
   snprintf(time_text, 64, "Solved in: %02dm%02ds", (int)time_elapsed / 60, (int)time_elapsed % 60);
 
   UIConstraints constraints = {0};
@@ -95,46 +96,64 @@ void draw_board(Cudoku *game, Size window_size) {
     draw_quad(constraints, NULL, 0.0, ALIGN_TOP_LEFT);
   }
 
-  set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
-  set_y_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
-  set_width_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
-  set_height_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
+  if (game->timer.state != TIMER_PAUSED) {
+    set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
+    set_y_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
+    set_width_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
+    set_height_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
 
-  for (int i = 0; i < 9; i++) {
-    for (int j = 0; j < 9; j++) {
-      if (!game->board[i][j].value) {
-        continue;
-      }
-      char num[2];
-      snprintf(num, sizeof(num), "%d", game->board[i][j].value);
-      Sizef text_size = calculate_text_size(num, 72.f);
-      set_y_constraint(&constraints, i * 100 + cell_size.height / 2.f - text_size.height / 2.f, UI_CONSTRAINT_FIXED);
-      set_x_constraint(&constraints, j * 100 + cell_size.width / 2.f - text_size.width / 2.f, UI_CONSTRAINT_FIXED);
-      if (game->board[i][j].is_locked) {
-        draw_text(num, 72.f, constraints, NULL, ALIGN_TOP_LEFT);
-      } else {
-        draw_text(num, 72.f, constraints, &selection_color, ALIGN_TOP_LEFT);
+    for (int i = 0; i < 9; i++) {
+      for (int j = 0; j < 9; j++) {
+        if (!game->board[i][j].value) {
+          continue;
+        }
+        char num[2];
+        snprintf(num, sizeof(num), "%d", game->board[i][j].value);
+        Sizef text_size = calculate_text_size(num, 72.f);
+        set_y_constraint(&constraints, i * 100 + cell_size.height / 2.f - text_size.height / 2.f, UI_CONSTRAINT_FIXED);
+        set_x_constraint(&constraints, j * 100 + cell_size.width / 2.f - text_size.width / 2.f, UI_CONSTRAINT_FIXED);
+        if (game->board[i][j].is_locked) {
+          draw_text(num, 72.f, constraints, NULL, ALIGN_TOP_LEFT);
+        } else {
+          draw_text(num, 72.f, constraints, &selection_color, ALIGN_TOP_LEFT);
+        }
       }
     }
   }
 }
 
-/* void draw_pause_overlay(Cudoku *game) { */
-/*   timer_pause(&game->timer); */
+void draw_pause_overlay() {
+  Size window = zephr_get_window_size();
+  Color bg_color = {0, 0, 0, 200.f};
+  Color text_color = {237.f, 225.f, 215.f, 255.f};
 
-/*   // */
-/*   // this is my basic idea of drawing ui elements */
-/*   // */
-/*   // examples of drawing shapes */
-/*   draw_quad(beginning_x, beginning_y, win_width, win_height); */
-/*   draw_circle(); */ 
-/*   draw_triangle(); */
+  UIConstraints constraints = {0};
+  set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
+  set_y_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
+  set_width_constraint(&constraints, window.width, UI_CONSTRAINT_FIXED);
+  set_height_constraint(&constraints, window.height, UI_CONSTRAINT_FIXED);
 
-/*   // example of drawing text */
-/*   draw_text_at(pause_text, font_scale, posx, posy, color); */
+  draw_quad(constraints, &bg_color, 0.0, ALIGN_CENTER);
 
-/*   // TODO: buttons and other elements */
-/* } */
+  set_width_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
+  set_height_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
+
+  draw_text("Paused", 100.f, constraints, &text_color, ALIGN_CENTER);
+}
+
+void pause_game(Cudoku *game) {
+  if (game->has_won) return;
+
+  if (game->timer.state == TIMER_PAUSED) {
+    timer_resume(&game->timer);
+  } else if (game->timer.state == TIMER_RUNNING) {
+    game->should_draw_help = false;
+    game->should_draw_selection = false;
+    game->should_highlight_mistakes = false;
+    timer_pause(&game->timer);
+    timer_stop(&game->help_timer);
+  }
+}
 
 void draw_selection_box(int x, int y, const Color color) {
   UIConstraints constraints = {0};
@@ -171,11 +190,13 @@ void highlight_mistakes(Cudoku *game) {
 }
 
 void toggle_check(Cudoku *game) {
+  if (game->has_won || game->timer.state == TIMER_PAUSED) return;
+
   game->should_highlight_mistakes = !game->should_highlight_mistakes;
 }
 
 void do_selection(Cudoku *game, int x, int y) {
-  if (game->has_won) return;
+  if (game->has_won || game->timer.state == TIMER_PAUSED) return;
 
   int cell_x = floor(x / 100.f);
   int cell_y = floor(y / 100.f);
@@ -213,9 +234,6 @@ bool check_win(Cudoku *game) {
   }
 
   game->has_won = true;
-  game->should_draw_selection = false;
-  game->should_highlight_mistakes = false;
-  game->should_draw_help = false;
   game->win_time = get_time();
   timer_stop(&game->timer);
 
@@ -253,8 +271,9 @@ void move_selection(Cudoku *game, int x, int y) {
 }
 
 void toggle_selection(Cudoku *game) {
-  if (!game->has_won)
-    game->should_draw_selection = !game->should_draw_selection;
+  if (game->has_won || game->timer.state == TIMER_PAUSED) return;
+
+  game->should_draw_selection = !game->should_draw_selection;
 }
 
 void remove_arr_element(int *arr, int index, int size) {
@@ -444,6 +463,7 @@ void remove_numbers(Cudoku *game) {
 }
 
 void generate_random_board(Cudoku *game) {
+  if (game->timer.state == TIMER_PAUSED) return;
   reset_state(game);
   int size = 9;
   // fill diagonal boxes 1, 5, 9
@@ -480,7 +500,7 @@ void generate_random_board(Cudoku *game) {
 }
 
 void reset_board(Cudoku *game) {
-  if (game->has_won) return;
+  if (game->has_won || game->timer.state == TIMER_PAUSED) return;
 
   for (int i = 0; i < 9; i++) {
     for (int j = 0; j < 9; j++) {
@@ -494,12 +514,10 @@ void reset_board(Cudoku *game) {
 }
 
 bool toggle_help(Cudoku *game) {
-  if (!game->has_won) {
-    game->should_draw_help = !game->should_draw_help;
-    return game->should_draw_help;
-  }
+  if (game->has_won || game->timer.state == TIMER_PAUSED) return false;
 
-  return false;
+  game->should_draw_help = !game->should_draw_help;
+  return game->should_draw_help;
 }
 
 void draw_help(Timer *timer) {
@@ -551,7 +569,7 @@ void draw_help(Timer *timer) {
     total_help_texts_height += text_size.height + text_padding;
   }
 
-  if (timer->is_running) {
+  if (timer->state == TIMER_RUNNING) {
     char closing_in_text[128];
     snprintf(closing_in_text, sizeof(closing_in_text), "Hiding in %ds", (int)timer_remaining(timer) + 1);
     Sizef closing_in_text_size = calculate_text_size(closing_in_text, closing_in_font_size);
@@ -562,7 +580,7 @@ void draw_help(Timer *timer) {
 }
 
 void draw_timer(Timer *timer) {
-  if (!timer->is_running) return;
+  if (timer->state == TIMER_STOPPED) return;
 
   char timer_text[64];
   Color text_color = {
@@ -581,6 +599,12 @@ void draw_timer(Timer *timer) {
   Alignment alignment = ALIGN_BOTTOM_RIGHT;
 
   float elapsed = timer_elapsed(timer);
+
+  if (timer->state == TIMER_PAUSED) {
+    // if the timer is paused, we want to show the time at which it was paused
+    elapsed = timer->elapsed;
+  }
+
   int minutes = elapsed / 60;
   int seconds = (int)elapsed % 60;
 
