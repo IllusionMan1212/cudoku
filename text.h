@@ -19,14 +19,17 @@ typedef struct TextInstance {
   int tex_coords_index;
   Color color;
   float model[4][4];
-} TextInstance;
+} GlyphInstance;
 
 typedef struct GlyphInstanceList {
-  TextInstance *data;
+  GlyphInstance *data;
   int size;
   int capacity;
 } GlyphInstanceList;
 
+void new_glyph_instance_list(GlyphInstanceList *list, uint capacity);
 int init_fonts(const char *font_path);
 Sizef calculate_text_size(const char *text, int font_size);
 void draw_text(const char* text, int font_size, UIConstraints constraints, const Color *color, Alignment alignment);
+void add_text_instance(GlyphInstanceList *batch, const char* text, int font_size, UIConstraints constraints, const Color *color, Alignment alignment);
+void draw_text_batch(GlyphInstanceList *batch);

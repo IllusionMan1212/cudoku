@@ -18,21 +18,36 @@ Shader font_shader;
 unsigned int font_vao;
 unsigned int font_instance_vbo;
 
+void extend_glyph_instance_list(GlyphInstanceList *dest, GlyphInstanceList *src) {
+  if (dest->size + src->size >= dest->capacity) {
+    dest->capacity = dest->size + src->size;
+    GlyphInstance* temp = realloc(dest->data, dest->capacity * sizeof(GlyphInstance));
+    if (!temp) {
+      printf("[FATAL] Failed to reallocate memory for glyph instance list\n");
+      exit(1);
+    }
+    dest->data = temp;
+  }
+
+  memcpy(dest->data + dest->size, src->data, src->size * sizeof(GlyphInstance));
+  dest->size += src->size;
+}
+
 void new_glyph_instance_list(GlyphInstanceList *list, uint capacity) {
   list->size = 0;
   list->capacity = capacity;
-  list->data = malloc(list->capacity * sizeof(TextInstance));
+  list->data = malloc(list->capacity * sizeof(GlyphInstance));
 }
 
 void clear_glyph_instance_list(GlyphInstanceList *list) {
   list->size = 0;
-  memset(list->data, 0, list->size * sizeof(TextInstance));
+  memset(list->data, 0, list->size * sizeof(GlyphInstance));
 }
 
-void add_glyph_instance(GlyphInstanceList *list, TextInstance instance) {
+void add_glyph_instance(GlyphInstanceList *list, GlyphInstance instance) {
   if (list->size >= list->capacity) {
     list->capacity *= 2;
-    TextInstance* temp = realloc(list->data, list->capacity * sizeof(TextInstance));
+    GlyphInstance* temp = realloc(list->data, list->capacity * sizeof(GlyphInstance));
     if (!temp) {
       printf("[FATAL] Failed to reallocate memory for glyph instance list\n");
       exit(1);
@@ -201,22 +216,22 @@ int init_fonts(const char *font_path) {
   // font instance vbo
   glBindBuffer(GL_ARRAY_BUFFER, font_instance_vbo);
   glEnableVertexAttribArray(1);
-  glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(TextInstance), (void *)0);
+  glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(GlyphInstance), (void *)0);
   glVertexAttribDivisor(1, 1);
   glEnableVertexAttribArray(2);
-  glVertexAttribIPointer(2, 1, GL_INT, sizeof(TextInstance), (void *)sizeof(Vec4f));
+  glVertexAttribIPointer(2, 1, GL_INT, sizeof(GlyphInstance), (void *)sizeof(Vec4f));
   glVertexAttribDivisor(2, 1);
   glEnableVertexAttribArray(3);
-  glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(TextInstance), (void *)(sizeof(Vec4f) + sizeof(int)));
+  glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(GlyphInstance), (void *)(sizeof(Vec4f) + sizeof(int)));
   glVertexAttribDivisor(3, 1);
   glEnableVertexAttribArray(4);
   glEnableVertexAttribArray(5);
   glEnableVertexAttribArray(6);
   glEnableVertexAttribArray(7);
-  glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(TextInstance), (void *)(sizeof(Vec4f) * 2 + sizeof(int)));
-  glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(TextInstance), (void *)(sizeof(Vec4f) * 3 + sizeof(int)));
-  glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(TextInstance), (void *)(sizeof(Vec4f) * 4 + sizeof(int)));
-  glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, sizeof(TextInstance), (void *)(sizeof(Vec4f) * 5 + sizeof(int)));
+  glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(GlyphInstance), (void *)(sizeof(Vec4f) * 2 + sizeof(int)));
+  glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(GlyphInstance), (void *)(sizeof(Vec4f) * 3 + sizeof(int)));
+  glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(GlyphInstance), (void *)(sizeof(Vec4f) * 4 + sizeof(int)));
+  glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, sizeof(GlyphInstance), (void *)(sizeof(Vec4f) * 5 + sizeof(int)));
   glVertexAttribDivisor(4, 1);
   glVertexAttribDivisor(5, 1);
   glVertexAttribDivisor(6, 1);
@@ -281,7 +296,7 @@ Sizef calculate_text_size(const char *text, int font_size) {
   return size;
 }
 
-void draw_text(const char* text, int font_size, UIConstraints constraints, const Color *color, Alignment alignment) {
+GlyphInstanceList get_glyph_instance_list_from_text(const char *text, int font_size, UIConstraints constraints, const Color *color, Alignment alignment) {
   use_shader(font_shader);
   Color text_color = { 0, 0, 0, 1.f };
   if (color) {
@@ -333,7 +348,7 @@ void draw_text(const char* text, int font_size, UIConstraints constraints, const
     float xpos = (x + (ch.bearing.width - first_char_bearing_w));
     float ypos = (text_size.height - ch.bearing.height - (text_size.height - max_bearing_h));
 
-    TextInstance instance = {
+    GlyphInstance instance = {
       .position = (Vec4f){xpos, ypos, ch.size.width, ch.size.height},
       .tex_coords_index = (int)text[c] - 32,
       .color = text_color,
@@ -348,17 +363,47 @@ void draw_text(const char* text, int font_size, UIConstraints constraints, const
     c++;
   }
 
+  return glyph_instance_list;
+}
+
+void draw_text(const char* text, int font_size, UIConstraints constraints, const Color *color, Alignment alignment) {
+  GlyphInstanceList glyph_instance_list = get_glyph_instance_list_from_text(text, font_size, constraints, color, alignment);
+
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, zephr_context.font.atlas_texture_id);
   glBindVertexArray(font_vao);
 
   glBindBuffer(GL_ARRAY_BUFFER, font_instance_vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(TextInstance) * glyph_instance_list.size, glyph_instance_list.data, GL_DYNAMIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(GlyphInstance) * glyph_instance_list.size, glyph_instance_list.data, GL_DYNAMIC_DRAW);
 
   glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL, glyph_instance_list.size);
 
   glBindVertexArray(0);
   glBindTexture(GL_TEXTURE_2D, 0);
+
+  free(glyph_instance_list.data);
+}
+
+void draw_text_batch(GlyphInstanceList *batch) {
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, zephr_context.font.atlas_texture_id);
+  glBindVertexArray(font_vao);
+
+  glBindBuffer(GL_ARRAY_BUFFER, font_instance_vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(GlyphInstance) * batch->size, batch->data, GL_DYNAMIC_DRAW);
+
+  glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL, batch->size);
+
+  glBindVertexArray(0);
+  glBindTexture(GL_TEXTURE_2D, 0);
+
+  free(batch->data);
+}
+
+void add_text_instance(GlyphInstanceList *batch, const char* text, int font_size, UIConstraints constraints, const Color *color, Alignment alignment) {
+  GlyphInstanceList glyph_instance_list = get_glyph_instance_list_from_text(text, font_size, constraints, color, alignment);
+
+  extend_glyph_instance_list(batch, &glyph_instance_list);
 
   free(glyph_instance_list.data);
 }
