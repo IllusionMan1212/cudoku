@@ -102,6 +102,9 @@ void draw_board(Cudoku *game, Size window_size) {
     set_width_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
     set_height_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
 
+    GlyphInstanceList batch;
+    new_glyph_instance_list(&batch, 81);
+
     for (int i = 0; i < 9; i++) {
       for (int j = 0; j < 9; j++) {
         if (!game->board[i][j].value) {
@@ -113,12 +116,14 @@ void draw_board(Cudoku *game, Size window_size) {
         set_y_constraint(&constraints, i * 100 + cell_size.height / 2.f - text_size.height / 2.f, UI_CONSTRAINT_FIXED);
         set_x_constraint(&constraints, j * 100 + cell_size.width / 2.f - text_size.width / 2.f, UI_CONSTRAINT_FIXED);
         if (game->board[i][j].is_locked) {
-          draw_text(num, 72.f, constraints, NULL, ALIGN_TOP_LEFT);
+          add_text_instance(&batch, num, 72.f, constraints, NULL, ALIGN_TOP_LEFT);
         } else {
-          draw_text(num, 72.f, constraints, &selection_color, ALIGN_TOP_LEFT);
+          add_text_instance(&batch, num, 72.f, constraints, &selection_color, ALIGN_TOP_LEFT);
         }
       }
     }
+
+    draw_text_batch(&batch);
   }
 }
 
@@ -558,13 +563,16 @@ void draw_help(Timer *timer) {
   set_height_constraint(&constraints, size.height, UI_CONSTRAINT_FIXED);
   draw_quad(constraints, &bg_color, 0.0, ALIGN_TOP_LEFT);
 
+  GlyphInstanceList batch;
+  new_glyph_instance_list(&batch, 100);
+
   set_x_constraint(&constraints, text_padding, UI_CONSTRAINT_FIXED);
   for (int i = 0; i < HELP_TEXT_SIZE; i++) {
     Sizef text_size = calculate_text_size(help_texts[i], help_font_size);
     set_y_constraint(&constraints, total_help_texts_height, UI_CONSTRAINT_FIXED);
     set_width_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
     set_height_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
-    draw_text(help_texts[i], help_font_size, constraints, &text_color, ALIGN_TOP_LEFT);
+    add_text_instance(&batch, help_texts[i], help_font_size, constraints, &text_color, ALIGN_TOP_LEFT);
 
     total_help_texts_height += text_size.height + text_padding;
   }
@@ -575,8 +583,10 @@ void draw_help(Timer *timer) {
     Sizef closing_in_text_size = calculate_text_size(closing_in_text, closing_in_font_size);
     set_x_constraint(&constraints, overlay_width - closing_in_text_size.width - text_padding, UI_CONSTRAINT_FIXED);
     set_y_constraint(&constraints, text_padding, UI_CONSTRAINT_FIXED);
-    draw_text(closing_in_text, closing_in_font_size, constraints, &closing_in_text_color, ALIGN_TOP_LEFT);
+    add_text_instance(&batch, closing_in_text, closing_in_font_size, constraints, &closing_in_text_color, ALIGN_TOP_LEFT);
   }
+
+  draw_text_batch(&batch);
 }
 
 void draw_timer(Timer *timer) {
