@@ -5,14 +5,14 @@
 
 struct timeval start_time;
 
-double get_time() {
+double get_time(void) {
   struct timeval current_time;
   gettimeofday(&current_time, NULL);
 
   return (double)(current_time.tv_sec - start_time.tv_sec) + (double)(current_time.tv_usec - start_time.tv_usec) / 1000000.0;
 }
 
-void start_internal_timer() {
+void start_internal_timer(void) {
   gettimeofday(&start_time, NULL);
 }
 

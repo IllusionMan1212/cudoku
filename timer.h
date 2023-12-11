@@ -15,8 +15,8 @@ typedef struct Timer {
   TimerState state;
 } Timer;
 
-double get_time();
-void start_internal_timer();
+double get_time(void);
+void start_internal_timer(void);
 bool timer_ended(Timer *timer);
 void timer_start(Timer *timer, float duration);
 void timer_stop(Timer *timer);
