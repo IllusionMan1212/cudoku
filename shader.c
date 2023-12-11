@@ -3,6 +3,7 @@
 
 #include <glad/gl.h>
 
+#include "core.h"
 #include "shader.h"
 
 void read_shader_file(const char *path, char **buf) {
@@ -14,13 +15,15 @@ void read_shader_file(const char *path, char **buf) {
   }
 
   fseek(fp, 0, SEEK_END);
-  long filesize = ftell(fp);
+  u64 filesize = ftell(fp);
   fseek(fp, 0, SEEK_SET);
 
   *buf = malloc(filesize + 1);
   (*buf)[filesize] = '\0';
 
-  fread(*buf, filesize, 1, fp);
+  u64 read = fread(*buf, filesize, 1, fp);
+
+  CORE_UNUSED(read);
 
   fclose(fp);
 }

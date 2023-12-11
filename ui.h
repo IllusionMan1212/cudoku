@@ -1,8 +1,5 @@
 #pragma once
 
-#include <stdbool.h>
-#include <stdlib.h>
-
 #include "zephr_math.h"
 
 typedef enum Alignment {

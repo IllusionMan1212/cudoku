@@ -2,9 +2,8 @@
 
 #include <stdbool.h>
 
-#include "shader.h"
 #include "timer.h"
-#include "ui.h"
+#include "zephr_math.h"
 
 typedef struct Cell {
   int value;
@@ -21,7 +20,7 @@ typedef struct Cudoku {
   bool should_draw_help;
   Timer help_timer;
   Timer timer;
-  float win_time;
+  double win_time;
 } Cudoku;
 
 void draw_selection_box(int x, int y, const Color color);

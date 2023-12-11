@@ -1,3 +1,6 @@
+#include <sys/time.h>
+#include <stdlib.h>
+
 #include "timer.h"
 
 struct timeval start_time;
@@ -36,11 +39,11 @@ void timer_reset(Timer *timer) {
   timer->state = TIMER_RUNNING;
 }
 
-float timer_remaining(Timer *timer) {
+double timer_remaining(Timer *timer) {
   return timer->duration - (get_time() - timer->start);
 }
 
-float timer_elapsed(Timer *timer) {
+double timer_elapsed(Timer *timer) {
   return get_time() - timer->start + timer->elapsed;
 }
 
