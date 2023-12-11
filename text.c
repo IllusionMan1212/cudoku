@@ -4,16 +4,14 @@
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
-#include <freetype/ftmm.h>
 #include <glad/glx.h>
 
-#include "zephr.h"
 #include "shader.h"
 #include "text.h"
+#include "zephr.h"
 
 #define FONT_PIXEL_SIZE 64
 
-extern Context zephr_context;
 Shader font_shader;
 unsigned int font_vao;
 unsigned int font_instance_vbo;
@@ -33,7 +31,7 @@ void extend_glyph_instance_list(GlyphInstanceList *dest, GlyphInstanceList *src)
   dest->size += src->size;
 }
 
-void new_glyph_instance_list(GlyphInstanceList *list, uint capacity) {
+void new_glyph_instance_list(GlyphInstanceList *list, u32 capacity) {
   list->size = 0;
   list->capacity = capacity;
   list->data = malloc(list->capacity * sizeof(GlyphInstance));
@@ -89,8 +87,8 @@ int init_freetype(const char* font_path) {
   /* FT_UInt glyph_idx; */
   /* FT_ULong c = FT_Get_First_Char(face, &glyph_idx); */
 
-  uint tex_width = 0, tex_height = 0;
-  for (uint i = 32; i < 128; i++) {
+  u32 tex_width = 0, tex_height = 0;
+  for (u32 i = 32; i < 128; i++) {
     if (FT_Load_Char(face, i, FT_LOAD_RENDER)) {
       printf("[ERROR]: failed to load glyph for char '0x%x'\n", i);
     }
@@ -98,12 +96,12 @@ int init_freetype(const char* font_path) {
     /* FT_Render_Glyph(face->glyph, FT_RENDER_MODE_SDF); */
 
     tex_width += face->glyph->bitmap.width + 1;
-    tex_height = max(tex_height, face->glyph->bitmap.rows);
+    tex_height = CORE_MAX(tex_height, face->glyph->bitmap.rows);
   }
 
   char *pixels = (char *)calloc(tex_width * tex_height, 1);
 
-  for (uint i = 32; i < 128; i++) {
+  for (u32 i = 32; i < 128; i++) {
   /* while (glyph_idx) { */
     if (FT_Load_Char(face, i, FT_LOAD_RENDER)) {
       printf("[ERROR]: failed to load glyph for char '0x%x'\n", i);
@@ -118,8 +116,8 @@ int init_freetype(const char* font_path) {
       pen_y += (1 + (face->size->metrics.height >> 6));
     }
 
-    for (uint row = 0; row < bmp->rows; row++) {
-      for (uint col = 0; col < bmp->width; col++) {
+    for (u32 row = 0; row < bmp->rows; row++) {
+      for (u32 col = 0; col < bmp->width; col++) {
         int x = pen_x + col;
         int y = pen_y + row;
         pixels[y * tex_width + x] = bmp->buffer[row * bmp->pitch + col];
@@ -146,7 +144,7 @@ int init_freetype(const char* font_path) {
     character.size = (Size){ .width = face->glyph->bitmap.width, .height = face->glyph->bitmap.rows };
     character.bearing = (Size){ .width = face->glyph->bitmap_left, .height = face->glyph->bitmap_top };
 
-    zephr_context.font.characters[i] = character;
+    zephr_ctx.font.characters[i] = character;
 
     pen_x += bmp->width + 1;
 
@@ -165,7 +163,7 @@ int init_freetype(const char* font_path) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-  zephr_context.font.atlas_texture_id = texture;
+  zephr_ctx.font.atlas_texture_id = texture;
 
   glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -178,8 +176,8 @@ int init_freetype(const char* font_path) {
 }
 
 int init_fonts(const char *font_path) {
-  uint font_vbo;
-  uint font_ebo;
+  u32 font_vbo;
+  u32 font_ebo;
 
   int res = init_freetype(font_path);
   if (res != 0) {
@@ -247,7 +245,7 @@ int init_fonts(const char *font_path) {
     for (int j = 0; j < 4; j++) {
       char text[32];
       snprintf(text, 32, "texcoords[%d]", (i - 32) * 4 + j);
-      set_vec2f(font_shader, text, zephr_context.font.characters[i].tex_coords[j].x, zephr_context.font.characters[i].tex_coords[j].y);
+      set_vec2f(font_shader, text, zephr_ctx.font.characters[i].tex_coords[j].x, zephr_ctx.font.characters[i].tex_coords[j].y);
     }
   }
 
@@ -266,12 +264,12 @@ Sizef calculate_text_size(const char *text, int font_size) {
 
   // NOTE: I don't like looping through the characters twice, but it's fine for now
   for (int i = 0; text[i] != '\0'; i++) {
-    Character ch = zephr_context.font.characters[(uint)text[i]];
-    max_bearing_h = max(max_bearing_h, ch.bearing.height);
+    Character ch = zephr_ctx.font.characters[(u32)text[i]];
+    max_bearing_h = CORE_MAX(max_bearing_h, ch.bearing.height);
   }
 
-  for (int i = 0; text[i] != '\0'; i++) {
-    Character ch = zephr_context.font.characters[(uint)text[i]];
+  for (u64 i = 0; text[i] != '\0'; i++) {
+    Character ch = zephr_ctx.font.characters[(u32)text[i]];
     w += ch.advance / 64;
 
     // remove bearing of first character
@@ -289,7 +287,7 @@ Sizef calculate_text_size(const char *text, int font_size) {
       w -= (ch.bearing.width);
     }
 
-    h = max(h, max_bearing_h - ch.bearing.height + ch.size.height);
+    h = CORE_MAX(h, max_bearing_h - ch.bearing.height + ch.size.height);
   }
   size.width = (float)w * scale;
   size.height = (float)h * scale;
@@ -302,7 +300,7 @@ GlyphInstanceList get_glyph_instance_list_from_text(const char *text, int font_s
   if (color) {
     text_color = (Color){ color->r / 255.f, color->g / 255.f, color->b / 255.f, color->a / 255.f };
   }
-  set_mat4f(font_shader, "projection", (float *)zephr_context.projection.m);
+  set_mat4f(font_shader, "projection", (float *)zephr_ctx.projection.m);
 
   Vec2f pos = { 0.f, 0.f };
   Sizef size = {0};
@@ -326,11 +324,11 @@ GlyphInstanceList get_glyph_instance_list_from_text(const char *text, int font_s
 
   int max_bearing_h = 0;
   for (int i = 0; (i < text[i]) != '\0'; i++) {
-    Character ch = zephr_context.font.characters[(int)text[i]];
-    max_bearing_h = max(max_bearing_h, ch.bearing.height);
+    Character ch = zephr_ctx.font.characters[(int)text[i]];
+    max_bearing_h = CORE_MAX(max_bearing_h, ch.bearing.height);
   }
 
-  float first_char_bearing_w = zephr_context.font.characters[(int)text[0]].bearing.width;
+  float first_char_bearing_w = zephr_ctx.font.characters[(int)text[0]].bearing.width;
 
   GlyphInstanceList glyph_instance_list;
   new_glyph_instance_list(&glyph_instance_list, 16);
@@ -342,7 +340,7 @@ GlyphInstanceList get_glyph_instance_list_from_text(const char *text, int font_s
   int c = 0;
   int x = 0;
   while (text[c] != '\0') {
-    Character ch = zephr_context.font.characters[(int)text[c]];
+    Character ch = zephr_ctx.font.characters[(int)text[c]];
     // subtract the bearing width of the first character to remove the extra space
     // at the start of the text and move every char to the left by that width
     float xpos = (x + (ch.bearing.width - first_char_bearing_w));
@@ -352,7 +350,7 @@ GlyphInstanceList get_glyph_instance_list_from_text(const char *text, int font_s
       .position = (Vec4f){xpos, ypos, ch.size.width, ch.size.height},
       .tex_coords_index = (int)text[c] - 32,
       .color = text_color,
-      .model = {0},
+      .model = {{0}},
     };
 
     memcpy(instance.model, model.m, sizeof(float[4][4]));
@@ -370,7 +368,7 @@ void draw_text(const char* text, int font_size, UIConstraints constraints, const
   GlyphInstanceList glyph_instance_list = get_glyph_instance_list_from_text(text, font_size, constraints, color, alignment);
 
   glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, zephr_context.font.atlas_texture_id);
+  glBindTexture(GL_TEXTURE_2D, zephr_ctx.font.atlas_texture_id);
   glBindVertexArray(font_vao);
 
   glBindBuffer(GL_ARRAY_BUFFER, font_instance_vbo);
@@ -386,7 +384,7 @@ void draw_text(const char* text, int font_size, UIConstraints constraints, const
 
 void draw_text_batch(GlyphInstanceList *batch) {
   glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, zephr_context.font.atlas_texture_id);
+  glBindTexture(GL_TEXTURE_2D, zephr_ctx.font.atlas_texture_id);
   glBindVertexArray(font_vao);
 
   glBindBuffer(GL_ARRAY_BUFFER, font_instance_vbo);

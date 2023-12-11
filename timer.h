@@ -1,8 +1,6 @@
 #pragma once
 
 #include <stdbool.h>
-#include <stdio.h>
-#include <sys/time.h>
 
 typedef enum TimerState {
   TIMER_RUNNING,
@@ -11,8 +9,8 @@ typedef enum TimerState {
 } TimerState;
 
 typedef struct Timer {
-  float start;
-  float elapsed;
+  double start;
+  double elapsed;
   float duration;
   TimerState state;
 } Timer;
@@ -23,7 +21,7 @@ bool timer_ended(Timer *timer);
 void timer_start(Timer *timer, float duration);
 void timer_stop(Timer *timer);
 void timer_reset(Timer *timer);
-float timer_remaining(Timer *timer);
-float timer_elapsed(Timer *timer);
+double timer_remaining(Timer *timer);
+double timer_elapsed(Timer *timer);
 void timer_pause(Timer *timer);
 void timer_resume(Timer *timer);

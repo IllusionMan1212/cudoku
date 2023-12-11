@@ -1,34 +1,39 @@
-#include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
-#include <glad/glx.h>
-#include <stb_image.h>
+#include <X11/Xlib.h>
 
-#include "cudoku.h"
 #include "audio.h"
+#include "cudoku.h"
+#include "timer.h"
 #include "zephr.h"
+#include "zephr_math.h"
 
 #define DEBUG 1
 
-extern Display *display;
 const char *font_path = "assets/fonts/Rubik/Rubik-VariableFont_wght.ttf";
 const char *title = "Cudoku";
 
 void usage() {
   printf("Usage: cudoku [OPTION]\n\n");
-  printf("  %-20s%-20s", "-h, --help", "prints this help message\n");
-  printf("  %-20s%-20s", "-f, --font FONT", "use a custom font file to render text\n");
+  printf("  %-30s%-20s", "-h, --help", "prints this help message\n");
+  printf("  %-30s%-20s", "-f, --font <path_to_font>", "use a custom font file to render text\n");
 }
 
-void handle_keypress(XEvent xev, Cudoku *game) {
-  if (XLookupKeysym(&xev.xkey, 0) == XK_r) {
+void handle_keypress(ZephrEvent e, Cudoku *game) {
+  if (e.key.code == ZEPHR_KEYCODE_R) {
     reset_board(game);
   } else if (
-      xev.xkey.state & ControlMask &&
-      xev.xkey.state & Mod1Mask &&
-      XLookupKeysym(&xev.xkey, 0) == XK_w) {
+      e.key.code == ZEPHR_KEYCODE_ESCAPE ||
+      ((e.key.mods & ZEPHR_KEY_MOD_CTRL) && e.key.code == ZEPHR_KEYCODE_Q)
+      ) {
+    zephr_quit();
+  } else if (
+      e.key.mods & (ZEPHR_KEY_MOD_CTRL | ZEPHR_KEY_MOD_SHIFT) &&
+      e.key.code == ZEPHR_KEYCODE_W) {
 #if DEBUG
     printf("DEBUG: Ctrl + Shift + W pressed. Winning game\n");
 
@@ -41,42 +46,44 @@ void handle_keypress(XEvent xev, Cudoku *game) {
 
     audio_play_win();
 #endif
-  } else if (XLookupKeysym(&xev.xkey, 0) >= XK_0 && XLookupKeysym(&xev.xkey, 0) <= XK_9) {
-    set_selected_number(game, XLookupKeysym(&xev.xkey, 0) - XK_0);
-  } else if (XLookupKeysym(&xev.xkey, 0) == XK_BackSpace ||
-      XLookupKeysym(&xev.xkey, 0) == XK_Delete) {
+  } else if (e.key.code >= ZEPHR_KEYCODE_1 && e.key.code <= ZEPHR_KEYCODE_9) {
+    set_selected_number(game, e.key.code - ZEPHR_KEYCODE_1 + 1);
+  } else if (e.key.code == ZEPHR_KEYCODE_0) {
+    set_selected_number(game, 0);
+  } else if (e.key.code == ZEPHR_KEYCODE_BACKSPACE ||
+      e.key.code == ZEPHR_KEYCODE_DELETE) {
     set_selected_number(game, 0);
   } else if (
-      XLookupKeysym(&xev.xkey, 0) == XK_Left ||
-      XLookupKeysym(&xev.xkey, 0) == XK_a ||
-      XLookupKeysym(&xev.xkey, 0) == XK_h) {
+      e.key.code == ZEPHR_KEYCODE_LEFT ||
+      e.key.code == ZEPHR_KEYCODE_A ||
+      e.key.code == ZEPHR_KEYCODE_H) {
     move_selection(game, -1, 0);
   } else if (
-      XLookupKeysym(&xev.xkey, 0) == XK_Right ||
-      XLookupKeysym(&xev.xkey, 0) == XK_d ||
-      XLookupKeysym(&xev.xkey, 0) == XK_l) {
+      e.key.code == ZEPHR_KEYCODE_RIGHT ||
+      e.key.code == ZEPHR_KEYCODE_D ||
+      e.key.code == ZEPHR_KEYCODE_L) {
     move_selection(game, 1, 0);
   } else if (
-      XLookupKeysym(&xev.xkey, 0) == XK_Up ||
-      XLookupKeysym(&xev.xkey, 0) == XK_w ||
-      XLookupKeysym(&xev.xkey, 0) == XK_k) {
+      e.key.code == ZEPHR_KEYCODE_UP ||
+      e.key.code == ZEPHR_KEYCODE_W ||
+      e.key.code == ZEPHR_KEYCODE_K) {
     move_selection(game, 0, -1);
   } else if (
-      XLookupKeysym(&xev.xkey, 0) == XK_Down ||
-      XLookupKeysym(&xev.xkey, 0) == XK_s ||
-      XLookupKeysym(&xev.xkey, 0) == XK_j) {
+      e.key.code == ZEPHR_KEYCODE_DOWN ||
+      e.key.code == ZEPHR_KEYCODE_S ||
+      e.key.code == ZEPHR_KEYCODE_J) {
     move_selection(game, 0, 1);
   } else if (
-      XLookupKeysym(&xev.xkey, 0) == XK_Return ||
-      XLookupKeysym(&xev.xkey, 0) == XK_space) {
+      e.key.code == ZEPHR_KEYCODE_ENTER ||
+      e.key.code == ZEPHR_KEYCODE_SPACE) {
     toggle_selection(game);
-  } else if (XLookupKeysym(&xev.xkey, 0) == XK_n) {
+  } else if (e.key.code == ZEPHR_KEYCODE_N) {
     generate_random_board(game);
-  } else if (XLookupKeysym(&xev.xkey, 0) == XK_c) {
+  } else if (e.key.code == ZEPHR_KEYCODE_C) {
     toggle_check(game);
-  } else if (XLookupKeysym(&xev.xkey, 0) == XK_p) {
+  } else if (e.key.code == ZEPHR_KEYCODE_P) {
     pause_game(game);
-  } else if (XLookupKeysym(&xev.xkey, 0) == XK_F1) {
+  } else if (e.key.code == ZEPHR_KEYCODE_F1) {
     if (!toggle_help(game)) {
       timer_stop(&game->help_timer);
     }
@@ -92,9 +99,9 @@ int main(int argc, char *argv[]) {
     }
 
     for (int i = 1; i < argc; i++) {
-      char *flag = argv[i];
+      char *option = argv[i];
 
-      if (strcmp(flag, "-f") == 0 || strcmp(flag, "--font") == 0) {
+      if (strcmp(option, "-f") == 0 || strcmp(option, "--font") == 0) {
         if (i + 1 < argc) {
           font_path = argv[i + 1];
           i++;
@@ -105,9 +112,8 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  Color clear_color = {0.0f, 0.0f, 0.0f, 1.f};
   Size window_size = {900, 900};
-  int res = init_zephr(font_path, title, window_size, &clear_color);
+  int res = init_zephr(font_path, title, window_size);
   if (res != 0) {
     printf("[ERROR]: could not initialize zephr\n");
     return 1;
@@ -124,31 +130,30 @@ int main(int argc, char *argv[]) {
   timer_start(&game.timer, 0.0f);
 
   while (!zephr_should_quit()) {
-    while (XPending(display)) {
-      XEvent xev;
-      XNextEvent(display, &xev);
+    ZephrEvent event;
 
-      if (xev.type == KeyPress) {
-        if (XLookupKeysym(&xev.xkey, 0) == XK_Escape ||
-            (XLookupKeysym(&xev.xkey, 0) == XK_q && xev.xkey.state & ControlMask)) {
+    while (zephr_iter_events(&event)) {
+      switch (event.type) {
+        case ZEPHR_EVENT_UNKNOWN:
+          printf("[WARN]: Unknown event\n");
+          break;
+        case ZEPHR_EVENT_KEY_PRESSED:
+          handle_keypress(event, &game);
+          break;
+        case ZEPHR_EVENT_MOUSE_BUTTON_PRESSED:
+          if (event.mouse.button == ZEPHR_MOUSE_BUTTON_LEFT) {
+            do_selection(&game, event.mouse.position.x, event.mouse.position.y);
+          }
+          break;
+        case ZEPHR_EVENT_WINDOW_CLOSED:
           zephr_quit();
           break;
-        } else {
-          handle_keypress(xev, &game);
+        default:
+        case ZEPHR_EVENT_WINDOW_RESIZED:
+        case ZEPHR_EVENT_KEY_RELEASED:
+          break;
         }
-      } else if (xev.type == ButtonPress) {
-        if (xev.xbutton.button == Button1) {
-          int x = xev.xbutton.x;
-          int y = xev.xbutton.y;
-          do_selection(&game, x, y);
-        }
-      }
     }
-
-    // TODO: how do I want the input handling to look like
-    //zephr_poll_events();?
-    //for event in zephr_events()??
-    //
 
     draw_board(&game, window_size);
     draw_timer(&game.timer);

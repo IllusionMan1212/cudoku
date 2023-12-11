@@ -1,6 +1,8 @@
 #pragma once
 
+#include "core.h"
 #include "ui.h"
+#include "zephr_math.h"
 
 typedef struct Character {
   Size size;
@@ -9,10 +11,10 @@ typedef struct Character {
   Vec2f tex_coords[4]; // the 4 corners of the character quad
 } Character;
 
-typedef struct ZephFont {
+typedef struct ZephrFont {
   Character characters[128];
   unsigned int atlas_texture_id;
-} ZephFont;
+} ZephrFont;
 
 typedef struct TextInstance {
   Vec4f position;
@@ -27,7 +29,7 @@ typedef struct GlyphInstanceList {
   int capacity;
 } GlyphInstanceList;
 
-void new_glyph_instance_list(GlyphInstanceList *list, uint capacity);
+void new_glyph_instance_list(GlyphInstanceList *list, u32 capacity);
 int init_fonts(const char *font_path);
 Sizef calculate_text_size(const char *text, int font_size);
 void draw_text(const char* text, int font_size, UIConstraints constraints, const Color *color, Alignment alignment);

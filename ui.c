@@ -1,23 +1,17 @@
 #include <stdio.h>
-#include <math.h>
 
-#include <X11/Xlib.h>
 #include <glad/glx.h>
 
-#include "cudoku.h"
 #include "shader.h"
-#include "ui.h"
-#include "x11.h"
 #include "zephr.h"
 
-extern Context zephr_context;
 Shader ui_shader;
 unsigned int ui_vao;
 unsigned int ui_vbo;
 
 int init_ui(const char* font_path, Size window_size) {
-  zephr_context.window.size = window_size;
-  zephr_context.projection = orthographic_projection_2d(0.f, window_size.width, window_size.height, 0.f);
+  zephr_ctx.window.size = window_size;
+  zephr_ctx.projection = orthographic_projection_2d(0.f, window_size.width, window_size.height, 0.f);
 
   int res = init_fonts(font_path);
   if (res == -1) {
@@ -54,7 +48,7 @@ void set_x_constraint(UIConstraints *constraints, float value, UIConstraint type
       constraints->x = value;
       break;
     case UI_CONSTRAINT_RELATIVE:
-      constraints->x = (value * zephr_context.window.size.width);
+      constraints->x = (value * zephr_ctx.window.size.width);
       break;
   }
 }
@@ -68,7 +62,7 @@ void set_y_constraint(UIConstraints *constraints, float value, UIConstraint type
       constraints->y = value;
       break;
     case UI_CONSTRAINT_RELATIVE:
-      constraints->y = (value * zephr_context.window.size.height);
+      constraints->y = (value * zephr_ctx.window.size.height);
       break;
   }
 }
@@ -79,10 +73,10 @@ void set_width_constraint(UIConstraints *constraints, float value, UIConstraint 
       constraints->width = value;
       break;
     case UI_CONSTRAINT_RELATIVE:
-      constraints->width = (value * zephr_context.window.size.width);
+      constraints->width = (value * zephr_ctx.window.size.width);
       break;
     case UI_CONSTRAINT_RELATIVE_PIXELS:
-      constraints->width = zephr_context.window.size.width / (float)zephr_context.screen_size.width * value;
+      constraints->width = zephr_ctx.window.size.width / (float)zephr_ctx.screen_size.width * value;
       break;
     case UI_CONSTRAINT_ASPECT_RATIO:
       constraints->width = constraints->height * value;
@@ -96,10 +90,10 @@ void set_height_constraint(UIConstraints *constraints, float value, UIConstraint
       constraints->height = value;
       break;
     case UI_CONSTRAINT_RELATIVE:
-      constraints->height = (value * zephr_context.window.size.height);
+      constraints->height = (value * zephr_ctx.window.size.height);
       break;
     case UI_CONSTRAINT_RELATIVE_PIXELS:
-      constraints->height = zephr_context.window.size.height / (float)zephr_context.screen_size.height * value;
+      constraints->height = zephr_ctx.window.size.height / (float)zephr_ctx.screen_size.height * value;
       break;
     case UI_CONSTRAINT_ASPECT_RATIO:
       constraints->height = constraints->width * value;
@@ -123,36 +117,36 @@ void apply_alignment(Alignment align, Vec2f *pos, Sizef size) {
       pos->y = pos->y;
       break;
     case ALIGN_TOP_CENTER:
-      pos->x += zephr_context.window.size.width / 2.f - size.width / 2.f;
+      pos->x += zephr_ctx.window.size.width / 2.f - size.width / 2.f;
       pos->y = pos->y;
       break;
     case ALIGN_TOP_RIGHT:
-      pos->x += zephr_context.window.size.width - size.width;
+      pos->x += zephr_ctx.window.size.width - size.width;
       pos->y = pos->y;
       break;
     case ALIGN_BOTTOM_LEFT:
       pos->x = pos->x;
-      pos->y += zephr_context.window.size.height - size.height;
+      pos->y += zephr_ctx.window.size.height - size.height;
       break;
     case ALIGN_BOTTOM_CENTER:
-      pos->x += zephr_context.window.size.width / 2.f - size.width / 2.f;
-      pos->y += zephr_context.window.size.height - size.height;
+      pos->x += zephr_ctx.window.size.width / 2.f - size.width / 2.f;
+      pos->y += zephr_ctx.window.size.height - size.height;
       break;
     case ALIGN_BOTTOM_RIGHT:
-      pos->x += zephr_context.window.size.width - size.width;
-      pos->y += zephr_context.window.size.height - size.height;
+      pos->x += zephr_ctx.window.size.width - size.width;
+      pos->y += zephr_ctx.window.size.height - size.height;
       break;
     case ALIGN_LEFT_CENTER:
       pos->x = pos->x;
-      pos->y += zephr_context.window.size.height / 2.f - size.height / 2.f;
+      pos->y += zephr_ctx.window.size.height / 2.f - size.height / 2.f;
       break;
     case ALIGN_RIGHT_CENTER:
-      pos->x += zephr_context.window.size.width - size.width;
-      pos->y += zephr_context.window.size.height / 2.f - size.height / 2.f;
+      pos->x += zephr_ctx.window.size.width - size.width;
+      pos->y += zephr_ctx.window.size.height / 2.f - size.height / 2.f;
       break;
     case ALIGN_CENTER:
-      pos->x += zephr_context.window.size.width / 2.f - size.width / 2.f;
-      pos->y += zephr_context.window.size.height / 2.f - size.height / 2.f;
+      pos->x += zephr_ctx.window.size.width / 2.f - size.width / 2.f;
+      pos->y += zephr_ctx.window.size.height / 2.f - size.height / 2.f;
       break;
   }
 }
@@ -169,7 +163,7 @@ void draw_quad(UIConstraints constraints, const Color *color, float border_radiu
   set_float(ui_shader, "uiWidth", constraints.width);
   set_float(ui_shader, "uiHeight", constraints.height);
   set_float(ui_shader, "borderRadius", border_radius);
-  set_mat4f(ui_shader, "projection", (float *)zephr_context.projection.m);
+  set_mat4f(ui_shader, "projection", (float *)zephr_ctx.projection.m);
 
   Vec2f pos = { 0.f, 0.f };
   Sizef size = { 0.f, 0.f };
@@ -228,7 +222,7 @@ void draw_triangle(UIConstraints constraints, const Color *color, Alignment alig
   } else {
     set_vec4f(ui_shader, "aColor", 0.f, 0.f, 0.f, 1.f);
   }
-  set_mat4f(ui_shader, "projection", (float *)zephr_context.projection.m);
+  set_mat4f(ui_shader, "projection", (float *)zephr_ctx.projection.m);
 
   Vec2f pos = { 0.f, 0.f };
   Sizef size = { 0.f, 0.f };

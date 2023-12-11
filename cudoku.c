@@ -4,9 +4,7 @@
 #include <math.h>
 #include <string.h>
 
-#include <glad/gl.h>
-#include "3rdparty/stb/stb_image.h"
-
+#include "core.h"
 #include "cudoku.h"
 #include "audio.h"
 #include "ui.h"
@@ -43,7 +41,7 @@ void draw_win(Cudoku *game) {
 
   char time_text[64];
 
-  float time_elapsed = game->win_time - game->timer.start + game->timer.elapsed;
+  double time_elapsed = game->win_time - game->timer.start + game->timer.elapsed;
   snprintf(time_text, 64, "Solved in: %02dm%02ds", (int)time_elapsed / 60, (int)time_elapsed % 60);
 
   UIConstraints constraints = {0};
@@ -203,8 +201,8 @@ void toggle_check(Cudoku *game) {
 void do_selection(Cudoku *game, int x, int y) {
   if (game->has_won || game->timer.state == TIMER_PAUSED) return;
 
-  int cell_x = floor(x / 100.f);
-  int cell_y = floor(y / 100.f);
+  int cell_x = (int)floor(x / 100.f);
+  int cell_y = (int)floor(y / 100.f);
 
   if (cell_x < 0 || cell_x > 8 || cell_y < 0 || cell_y > 8) {
     game->should_draw_selection = false;
@@ -306,8 +304,8 @@ void get_candidates(Cell board[9][9], int row, int col, int candidates[], int *s
   }
 
   // check box
-  int box_row = floor(row / 3.f) * 3;
-  int box_col = floor(col / 3.f) * 3;
+  int box_row = (int)floor(row / 3.f) * 3;
+  int box_col = (int)floor(col / 3.f) * 3;
   for (int i = box_row; i < box_row + 3; i++) {
     for (int j = box_col; j < box_col + 3; j++) {
       if (board[i][j].value != 0) {
@@ -360,8 +358,8 @@ bool backtracker(Cudoku *game, int start_row, int start_col) {
 
   // try every candidate until we find one that uniquely solves the board.
   while (num_candidates) {
-    uint rand_idx = rand() % num_candidates;
-    uint candidate = candidates[rand_idx];
+    u32 rand_idx = rand() % num_candidates;
+    u32 candidate = candidates[rand_idx];
     remove_arr_element(candidates, rand_idx, num_candidates);
     num_candidates--;
     game->board[start_row][start_col].value = candidate;
@@ -433,7 +431,7 @@ void remove_numbers(Cudoku *game) {
     int rand_idx = rand() % filled_cells_size;
     int cell = filled_cells[rand_idx];
     remove_arr_element(filled_cells, rand_idx, filled_cells_size--);
-    int removed_row = floor(cell / 9.f);
+    int removed_row = (int)floor(cell / 9.f);
     int removed_col = cell % 9;
 
     Cell removed_cell = game->board[removed_row][removed_col];
@@ -481,7 +479,7 @@ void generate_random_board(Cudoku *game) {
       size = 9;
     }
 
-    const int k = floor(row / 3.f) * 3;
+    const int k = (int)floor(row / 3.f) * 3;
     for (int j = k; j < k + 3; j++) {
       int rand_idx = rand() % size;
       int num = digits[rand_idx];
@@ -527,8 +525,8 @@ bool toggle_help(Cudoku *game) {
 
 void draw_help(Timer *timer) {
   int const text_padding = 10;
-  float const help_font_size = 24.f;
-  float const closing_in_font_size = 18.f;
+  int const help_font_size = 24;
+  int const closing_in_font_size = 18;
   Color const bg_color = {
     .r = 0.f,
     .g = 0.f,
@@ -548,16 +546,16 @@ void draw_help(Timer *timer) {
     .a = 255.0f,
   };
 
-  int overlay_height = 0;
-  int overlay_width = 0;
-  int total_help_texts_height = 10;
+  float overlay_height = 0;
+  float overlay_width = 0;
+  float total_help_texts_height = 10;
 
   for (int i = 0; i < HELP_TEXT_SIZE; i++) {
     Sizef text_size = calculate_text_size(help_texts[i], help_font_size);
     overlay_height += text_size.height + text_padding;
-    overlay_width = max(overlay_width, text_size.width + text_padding * 2);
+    overlay_width = CORE_MAX(overlay_width, text_size.width + text_padding * 2);
   }
-  Size size = {.width = overlay_width, .height = overlay_height + text_padding * 2};
+  Sizef size = {.width = overlay_width, .height = overlay_height + text_padding * 2};
   UIConstraints constraints = {0};
   set_width_constraint(&constraints, size.width, UI_CONSTRAINT_FIXED);
   set_height_constraint(&constraints, size.height, UI_CONSTRAINT_FIXED);
@@ -592,30 +590,31 @@ void draw_help(Timer *timer) {
 void draw_timer(Timer *timer) {
   if (timer->state == TIMER_STOPPED) return;
 
-  char timer_text[64];
-  Color text_color = {
+  const int font_size = 32;
+  const Color text_color = {
     .r = 66.0f,
     .g = 92.0f,
     .b = 124.0f,
     .a = 255.0f,
   };
-    Color bg_color = {
+  const Color bg_color = {
     .r = 0.0f,
     .g = 0.0f,
     .b = 0.0f,
     .a = 25.0f,
   };
-  float font_size = 32.f;
-  Alignment alignment = ALIGN_BOTTOM_RIGHT;
+  const Alignment alignment = ALIGN_BOTTOM_RIGHT;
 
-  float elapsed = timer_elapsed(timer);
+  char timer_text[64];
+
+  double elapsed = timer_elapsed(timer);
 
   if (timer->state == TIMER_PAUSED) {
     // if the timer is paused, we want to show the time at which it was paused
     elapsed = timer->elapsed;
   }
 
-  int minutes = elapsed / 60;
+  int minutes = (int)elapsed / 60;
   int seconds = (int)elapsed % 60;
 
   snprintf(timer_text, sizeof(timer_text), "Time: %02d:%02d", minutes, seconds);
