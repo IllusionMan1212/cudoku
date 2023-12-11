@@ -39,7 +39,7 @@ typedef struct Color {
 } Color;
 
 float to_radians(float degrees);
-Matrix4x4 identity();
+Matrix4x4 identity(void);
 void mult_4x4(Matrix4x4 *multiplicant, Matrix4x4 *multiplier);
 void apply_scale(Matrix4x4 *matrix, Sizef scale);
 void apply_rotation(Matrix4x4 *model, float angle);

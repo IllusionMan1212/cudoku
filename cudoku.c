@@ -34,6 +34,14 @@ static const char *help_texts[HELP_TEXT_SIZE] = {
   "Ctrl+Q/Esc - Quit"
 };
 
+//////////////////////////////////////
+//
+//
+// Drawing functions
+//
+//
+//////////////////////////////////////
+
 void draw_win(Cudoku *game) {
   Size window = zephr_get_window_size();
   Color bg_color = {0, 0, 0, 200.f};
@@ -125,7 +133,17 @@ void draw_board(Cudoku *game, Size window_size) {
   }
 }
 
-void draw_pause_overlay() {
+void draw_selection_box(int x, int y, const Color color) {
+  UIConstraints constraints = {0};
+  set_x_constraint(&constraints, x * 100, UI_CONSTRAINT_FIXED);
+  set_y_constraint(&constraints, y * 100, UI_CONSTRAINT_FIXED);
+  set_width_constraint(&constraints, 100, UI_CONSTRAINT_FIXED);
+  set_height_constraint(&constraints, 100, UI_CONSTRAINT_FIXED);
+
+  draw_quad(constraints, &color, 0.0, ALIGN_TOP_LEFT);
+}
+
+void draw_pause_overlay(void) {
   Size window = zephr_get_window_size();
   Color bg_color = {0, 0, 0, 200.f};
   Color text_color = {237.f, 225.f, 215.f, 255.f};
@@ -144,31 +162,7 @@ void draw_pause_overlay() {
   draw_text("Paused", 100.f, constraints, &text_color, ALIGN_CENTER);
 }
 
-void pause_game(Cudoku *game) {
-  if (game->has_won) return;
-
-  if (game->timer.state == TIMER_PAUSED) {
-    timer_resume(&game->timer);
-  } else if (game->timer.state == TIMER_RUNNING) {
-    game->should_draw_help = false;
-    game->should_draw_selection = false;
-    game->should_highlight_mistakes = false;
-    timer_pause(&game->timer);
-    timer_stop(&game->help_timer);
-  }
-}
-
-void draw_selection_box(int x, int y, const Color color) {
-  UIConstraints constraints = {0};
-  set_x_constraint(&constraints, x * 100, UI_CONSTRAINT_FIXED);
-  set_y_constraint(&constraints, y * 100, UI_CONSTRAINT_FIXED);
-  set_width_constraint(&constraints, 100, UI_CONSTRAINT_FIXED);
-  set_height_constraint(&constraints, 100, UI_CONSTRAINT_FIXED);
-
-  draw_quad(constraints, &color, 0.0, ALIGN_TOP_LEFT);
-}
-
-void highlight_mistakes(Cudoku *game) {
+void draw_mistakes_highlight(Cudoku *game) {
   for (int i = 0; i < 9; i++) {
     for (int j = 0; j < 9; j++) {
       Cell cell = game->board[i][j];
@@ -190,6 +184,139 @@ void highlight_mistakes(Cudoku *game) {
   set_width_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
   set_height_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
   draw_text(text, font_size, constraints, &(Color){255, 0, 0, 255}, ALIGN_BOTTOM_LEFT);
+}
+
+void draw_help(Timer *timer) {
+  int const text_padding = 10;
+  int const help_font_size = 24;
+  int const closing_in_font_size = 18;
+  Color const bg_color = {
+    .r = 0.f,
+    .g = 0.f,
+    .b = 0.f,
+    .a = 185.f
+  };
+  Color const text_color = {
+    237.f,
+    255.f,
+    255.f,
+    255.f,
+  };
+  Color const closing_in_text_color = {
+    .r = 255.0f,
+    .g = 150.0f,
+    .b = 0.0f,
+    .a = 255.0f,
+  };
+
+  float overlay_height = 0;
+  float overlay_width = 0;
+  float total_help_texts_height = 10;
+
+  for (int i = 0; i < HELP_TEXT_SIZE; i++) {
+    Sizef text_size = calculate_text_size(help_texts[i], help_font_size);
+    overlay_height += text_size.height + text_padding;
+    overlay_width = CORE_MAX(overlay_width, text_size.width + text_padding * 2);
+  }
+  Sizef size = {.width = overlay_width, .height = overlay_height + text_padding * 2};
+  UIConstraints constraints = {0};
+  set_width_constraint(&constraints, size.width, UI_CONSTRAINT_FIXED);
+  set_height_constraint(&constraints, size.height, UI_CONSTRAINT_FIXED);
+  draw_quad(constraints, &bg_color, 0.0, ALIGN_TOP_LEFT);
+
+  GlyphInstanceList batch;
+  new_glyph_instance_list(&batch, 100);
+
+  set_x_constraint(&constraints, text_padding, UI_CONSTRAINT_FIXED);
+  for (int i = 0; i < HELP_TEXT_SIZE; i++) {
+    Sizef text_size = calculate_text_size(help_texts[i], help_font_size);
+    set_y_constraint(&constraints, total_help_texts_height, UI_CONSTRAINT_FIXED);
+    set_width_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
+    set_height_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
+    add_text_instance(&batch, help_texts[i], help_font_size, constraints, &text_color, ALIGN_TOP_LEFT);
+
+    total_help_texts_height += text_size.height + text_padding;
+  }
+
+  if (timer->state == TIMER_RUNNING) {
+    char closing_in_text[128];
+    snprintf(closing_in_text, sizeof(closing_in_text), "Hiding in %ds", (int)timer_remaining(timer) + 1);
+    Sizef closing_in_text_size = calculate_text_size(closing_in_text, closing_in_font_size);
+    set_x_constraint(&constraints, overlay_width - closing_in_text_size.width - text_padding, UI_CONSTRAINT_FIXED);
+    set_y_constraint(&constraints, text_padding, UI_CONSTRAINT_FIXED);
+    add_text_instance(&batch, closing_in_text, closing_in_font_size, constraints, &closing_in_text_color, ALIGN_TOP_LEFT);
+  }
+
+  draw_text_batch(&batch);
+}
+
+void draw_timer(Timer *timer) {
+  if (timer->state == TIMER_STOPPED) return;
+
+  const int font_size = 32;
+  const Color text_color = {
+    .r = 66.0f,
+    .g = 92.0f,
+    .b = 124.0f,
+    .a = 255.0f,
+  };
+  const Color bg_color = {
+    .r = 0.0f,
+    .g = 0.0f,
+    .b = 0.0f,
+    .a = 25.0f,
+  };
+  const Alignment alignment = ALIGN_BOTTOM_RIGHT;
+
+  char timer_text[64];
+
+  double elapsed = timer_elapsed(timer);
+
+  if (timer->state == TIMER_PAUSED) {
+    // if the timer is paused, we want to show the time at which it was paused
+    elapsed = timer->elapsed;
+  }
+
+  int minutes = (int)elapsed / 60;
+  int seconds = (int)elapsed % 60;
+
+  snprintf(timer_text, sizeof(timer_text), "Time: %02d:%02d", minutes, seconds);
+
+  Sizef text_size = calculate_text_size(timer_text, font_size);
+
+  UIConstraints constraints = {0};
+  set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
+  set_y_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
+  set_width_constraint(&constraints, text_size.width + 4, UI_CONSTRAINT_FIXED);
+  set_height_constraint(&constraints, text_size.height + 4, UI_CONSTRAINT_FIXED);
+
+  draw_quad(constraints, &bg_color, 0.0, alignment);
+
+  set_width_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
+  set_height_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
+  draw_text(timer_text, font_size, constraints, &text_color, alignment);
+}
+
+//////////////////////////////////////
+//
+//
+// Game logic functions
+//
+//
+//////////////////////////////////////
+
+void pause_game(Cudoku *game) {
+  if (game->has_won) return;
+
+  if (game->timer.state == TIMER_PAUSED) {
+    timer_resume(&game->timer);
+  } else if (game->timer.state == TIMER_RUNNING) {
+    game->should_draw_help = false;
+    game->should_draw_selection = false;
+    game->should_highlight_mistakes = false;
+    timer_pause(&game->timer);
+    timer_stop(&game->help_timer);
+  }
 }
 
 void toggle_check(Cudoku *game) {
@@ -523,113 +650,3 @@ bool toggle_help(Cudoku *game) {
   return game->should_draw_help;
 }
 
-void draw_help(Timer *timer) {
-  int const text_padding = 10;
-  int const help_font_size = 24;
-  int const closing_in_font_size = 18;
-  Color const bg_color = {
-    .r = 0.f,
-    .g = 0.f,
-    .b = 0.f,
-    .a = 185.f
-  };
-  Color const text_color = {
-    237.f,
-    255.f,
-    255.f,
-    255.f,
-  };
-  Color const closing_in_text_color = {
-    .r = 255.0f,
-    .g = 150.0f,
-    .b = 0.0f,
-    .a = 255.0f,
-  };
-
-  float overlay_height = 0;
-  float overlay_width = 0;
-  float total_help_texts_height = 10;
-
-  for (int i = 0; i < HELP_TEXT_SIZE; i++) {
-    Sizef text_size = calculate_text_size(help_texts[i], help_font_size);
-    overlay_height += text_size.height + text_padding;
-    overlay_width = CORE_MAX(overlay_width, text_size.width + text_padding * 2);
-  }
-  Sizef size = {.width = overlay_width, .height = overlay_height + text_padding * 2};
-  UIConstraints constraints = {0};
-  set_width_constraint(&constraints, size.width, UI_CONSTRAINT_FIXED);
-  set_height_constraint(&constraints, size.height, UI_CONSTRAINT_FIXED);
-  draw_quad(constraints, &bg_color, 0.0, ALIGN_TOP_LEFT);
-
-  GlyphInstanceList batch;
-  new_glyph_instance_list(&batch, 100);
-
-  set_x_constraint(&constraints, text_padding, UI_CONSTRAINT_FIXED);
-  for (int i = 0; i < HELP_TEXT_SIZE; i++) {
-    Sizef text_size = calculate_text_size(help_texts[i], help_font_size);
-    set_y_constraint(&constraints, total_help_texts_height, UI_CONSTRAINT_FIXED);
-    set_width_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
-    set_height_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
-    add_text_instance(&batch, help_texts[i], help_font_size, constraints, &text_color, ALIGN_TOP_LEFT);
-
-    total_help_texts_height += text_size.height + text_padding;
-  }
-
-  if (timer->state == TIMER_RUNNING) {
-    char closing_in_text[128];
-    snprintf(closing_in_text, sizeof(closing_in_text), "Hiding in %ds", (int)timer_remaining(timer) + 1);
-    Sizef closing_in_text_size = calculate_text_size(closing_in_text, closing_in_font_size);
-    set_x_constraint(&constraints, overlay_width - closing_in_text_size.width - text_padding, UI_CONSTRAINT_FIXED);
-    set_y_constraint(&constraints, text_padding, UI_CONSTRAINT_FIXED);
-    add_text_instance(&batch, closing_in_text, closing_in_font_size, constraints, &closing_in_text_color, ALIGN_TOP_LEFT);
-  }
-
-  draw_text_batch(&batch);
-}
-
-void draw_timer(Timer *timer) {
-  if (timer->state == TIMER_STOPPED) return;
-
-  const int font_size = 32;
-  const Color text_color = {
-    .r = 66.0f,
-    .g = 92.0f,
-    .b = 124.0f,
-    .a = 255.0f,
-  };
-  const Color bg_color = {
-    .r = 0.0f,
-    .g = 0.0f,
-    .b = 0.0f,
-    .a = 25.0f,
-  };
-  const Alignment alignment = ALIGN_BOTTOM_RIGHT;
-
-  char timer_text[64];
-
-  double elapsed = timer_elapsed(timer);
-
-  if (timer->state == TIMER_PAUSED) {
-    // if the timer is paused, we want to show the time at which it was paused
-    elapsed = timer->elapsed;
-  }
-
-  int minutes = (int)elapsed / 60;
-  int seconds = (int)elapsed % 60;
-
-  snprintf(timer_text, sizeof(timer_text), "Time: %02d:%02d", minutes, seconds);
-
-  Sizef text_size = calculate_text_size(timer_text, font_size);
-
-  UIConstraints constraints = {0};
-  set_x_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
-  set_y_constraint(&constraints, 0, UI_CONSTRAINT_FIXED);
-  set_width_constraint(&constraints, text_size.width + 4, UI_CONSTRAINT_FIXED);
-  set_height_constraint(&constraints, text_size.height + 4, UI_CONSTRAINT_FIXED);
-
-  draw_quad(constraints, &bg_color, 0.0, alignment);
-
-  set_width_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
-  set_height_constraint(&constraints, 1, UI_CONSTRAINT_FIXED);
-  draw_text(timer_text, font_size, constraints, &text_color, alignment);
-}

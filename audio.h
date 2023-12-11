@@ -1,7 +1,7 @@
 #pragma once
 
-int audio_init();
-void audio_close();
-void audio_update();
-void audio_play_scribble();
-void audio_play_win();
+int audio_init(void);
+void audio_close(void);
+void audio_update(void);
+void audio_play_scribble(void);
+void audio_play_win(void);

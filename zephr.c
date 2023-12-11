@@ -477,7 +477,7 @@ ZephrKeycode x11_keysym_to_zephr_keycode_map(KeySym sym) {
 /*   } */
 /* } */
 
-void x11_resize_window() {
+void x11_resize_window(void) {
   XWindowAttributes win_attrs;
   XGetWindowAttributes(x11_display, x11_window, &win_attrs);
   glViewport(0, 0, win_attrs.width, win_attrs.height);
@@ -629,7 +629,7 @@ int x11_init(const char* title, int window_width, int window_height) {
   return res;
 }
 
-void x11_close() {
+void x11_close(void) {
   glXMakeCurrent(x11_display, 0, 0);
   glXDestroyContext(x11_display, glx_context);
 
@@ -640,8 +640,7 @@ void x11_close() {
   gladLoaderUnloadGLX();
 }
 
-void x11_go_fullscreen()
-{
+void x11_go_fullscreen(void) {
   XEvent xev;
   Atom wm_state = XInternAtom(x11_display, "_NET_WM_STATE", False);
   Atom fullscreen = XInternAtom(x11_display, "_NET_WM_STATE_FULLSCREEN", False);
@@ -657,8 +656,7 @@ void x11_go_fullscreen()
     SubstructureNotifyMask | SubstructureRedirectMask, &xev);
 }
 
-void x11_return_fullscreen()
-{
+void x11_return_fullscreen(void) {
   XEvent xev;
   Atom wm_state = XInternAtom(x11_display, "_NET_WM_STATE", False);
   Atom fullscreen = XInternAtom(x11_display, "_NET_WM_STATE_FULLSCREEN", False);
@@ -729,12 +727,12 @@ u32 init_zephr(const char* font_path, const char* window_title, Size window_size
   return 0;
 }
 
-void deinit_zephr() {
+void deinit_zephr(void) {
   x11_close();
   audio_close();
 }
 
-bool zephr_should_quit() {
+bool zephr_should_quit(void) {
   glClearColor(0, 0, 0, 1);
   glClear(GL_COLOR_BUFFER_BIT);
 
@@ -744,26 +742,26 @@ bool zephr_should_quit() {
 }
 
 // This MUST be called at the end of the frame
-void zephr_swap_buffers() {
+void zephr_swap_buffers(void) {
   glXSwapBuffers(x11_display, x11_window);
 }
 
-Size zephr_get_window_size() {
+Size zephr_get_window_size(void) {
   return zephr_ctx.window.size;
 }
 
 // This MUST be called after calling init_zephr()
-void zephr_make_window_non_resizable() {
+void zephr_make_window_non_resizable(void) {
   x11_make_window_non_resizable(zephr_ctx.window.size.width, zephr_ctx.window.size.height);
 }
 
-void zephr_toggle_fullscreen() {
+void zephr_toggle_fullscreen(void) {
   x11_toggle_fullscreen(zephr_ctx.window.is_fullscreen);
 
   zephr_ctx.window.is_fullscreen = !zephr_ctx.window.is_fullscreen;
 }
 
-void zephr_quit() {
+void zephr_quit(void) {
   zephr_ctx.should_quit = true;
 }
 

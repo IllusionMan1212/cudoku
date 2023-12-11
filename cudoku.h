@@ -24,7 +24,13 @@ typedef struct Cudoku {
 } Cudoku;
 
 void draw_selection_box(int x, int y, const Color color);
-void highlight_mistakes(Cudoku *game);
+void draw_mistakes_highlight(Cudoku *game);
+void draw_pause_overlay(void);
+void draw_help(Timer *timer);
+void draw_timer(Timer *timer);
+void draw_win(Cudoku *game);
+void draw_board(Cudoku *game, Size window_size);
+
 void toggle_check(Cudoku *game);
 void do_selection(Cudoku *game, int x, int y);
 void set_selected_number(Cudoku *game, int number);
@@ -33,9 +39,4 @@ void toggle_selection(Cudoku *game);
 void generate_random_board(Cudoku *game);
 void reset_board(Cudoku *game);
 bool toggle_help(Cudoku *game);
-void draw_help(Timer *timer);
-void draw_timer(Timer *timer);
-void draw_win(Cudoku *game);
-void draw_board(Cudoku *game, Size window_size);
 void pause_game(Cudoku *game);
-void draw_pause_overlay();

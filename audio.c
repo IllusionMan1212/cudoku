@@ -8,7 +8,7 @@ FMOD_CHANNELGROUP *sfx_channel_group;
 FMOD_SOUND *scribble_sound;
 FMOD_SOUND *win_sound;
 
-int audio_init() {
+int audio_init(void) {
   // create fmod_system
   FMOD_RESULT fmod_res = FMOD_System_Create(&fmod_system, FMOD_VERSION);
   if (fmod_res != FMOD_OK) {
@@ -41,25 +41,25 @@ int audio_init() {
   return 0;
 }
 
-void audio_update() {
+void audio_update(void) {
   FMOD_System_Update(fmod_system);
 }
 
-void audio_play_scribble() {
+void audio_play_scribble(void) {
   FMOD_RESULT fmod_res = FMOD_System_PlaySound(fmod_system, scribble_sound, sfx_channel_group, false, NULL);
   if (fmod_res != FMOD_OK) {
     printf("Failed to play \"scribble\" sound\n");
   };
 }
 
-void audio_play_win() {
+void audio_play_win(void) {
   FMOD_RESULT fmod_res = FMOD_System_PlaySound(fmod_system, win_sound, sfx_channel_group, false, NULL);
   if (fmod_res != FMOD_OK) {
     printf("Failed to play \"win\" sound\n");
   };
 }
 
-void audio_close() {
+void audio_close(void) {
   FMOD_Sound_Release(win_sound);
   FMOD_Sound_Release(scribble_sound);
   FMOD_ChannelGroup_Release(sfx_channel_group);

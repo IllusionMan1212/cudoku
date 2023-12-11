@@ -19,7 +19,7 @@ Matrix4x4 orthographic_projection_2d(float left, float right, float bottom, floa
     return result;
 }
 
-Matrix4x4 identity() {
+Matrix4x4 identity(void) {
     Matrix4x4 result = {0};
 
     result.m[0][0] = 1.0f;

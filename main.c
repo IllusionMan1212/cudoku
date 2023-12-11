@@ -163,7 +163,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (game.should_highlight_mistakes) {
-      highlight_mistakes(&game);
+      draw_mistakes_highlight(&game);
     }
 
     if (timer_ended(&game.help_timer)) {
